@@ -10,7 +10,7 @@ export const googleProvider = new GoogleAuthProvider();
 
 // Singleton helper to get data
 export async function getPortfolioData() {
-  const collections = ['servicos', 'projectos', 'metricas', 'depoimentos', 'contactos', 'sectores', 'pais', 'ferramentas'];
+  const collections = ['servicos', 'projectos', 'metricas', 'depoimentos', 'contactos', 'sectores', 'paises', 'ferramentas'];
   const data: any = {};
   
   // Perfil
@@ -33,7 +33,15 @@ export function subscribeToCollection(colName: string, callback: (data: any[]) =
 }
 
 export async function login() {
-  return signInWithPopup(auth, googleProvider);
+  try {
+    return await signInWithPopup(auth, googleProvider);
+  } catch (error: any) {
+    console.error("Erro na Autenticação Google:", error.code, error.message);
+    if (error.code === 'auth/unauthorized-domain') {
+      alert("Domínio não autorizado! Adicione este URL no Console do Firebase > Authentication > Settings > Authorized Domains.");
+    }
+    throw error;
+  }
 }
 
 export async function logout() {

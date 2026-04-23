@@ -5,7 +5,7 @@ import {
   User, Briefcase, Layers, BarChart3, Users, Mail, 
   Globe, Search, Bell, Settings, LayoutDashboard, ChevronRight,
   FileDown, FileUp, Database, FileJson, FileType, FileText, FileSpreadsheet, Copy,
-  CheckCircle, AlertCircle, List, Flag, Cpu
+  CheckCircle, AlertCircle, List, Flag, Cpu, Image as ImageIcon, Upload, Building2
 } from 'lucide-react';
 import { auth, db, login, logout, subscribeToCollection } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -14,6 +14,11 @@ import Papa from 'papaparse';
 import * as mammoth from 'mammoth';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { 
+  PERFIL_DATA, SERVICOS_DATA, METRICAS_DATA, PROJECTOS_DATA, 
+  SECTORES_DATA, PAISES_DATA, DEPOIMENTOS_DATA, FERRAMENTAS_DATA, 
+  CONTACTOS_DATA, CONFIG_GLOBALS, PARCEIROS_DATA
+} from '../constants';
 
 export default function AdminPanel({ onClose }: { onClose: () => void }) {
   const [user, setUser] = useState<any>(null);
@@ -36,7 +41,7 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     // Count items for dashboard stats
-    const collectionsCount = ['servicos', 'projectos', 'metricas', 'depoimentos', 'contactos', 'sectores', 'paises', 'ferramentas'];
+    const collectionsCount = ['servicos', 'projectos', 'metricas', 'depoimentos', 'contactos', 'sectores', 'paises', 'ferramentas', 'parceiros'];
     const unsubs = collectionsCount.map(col => 
       subscribeToCollection(col, (list) => {
         setItemsCount((prev: any) => ({ ...prev, [col]: list.length }));
@@ -82,6 +87,7 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
     { id: 'metricas', label: 'Estatísticas', icon: BarChart3, category: 'Menu' },
     { id: 'depoimentos', label: 'Testemunhos', icon: Users, category: 'Social' },
     { id: 'contactos', label: 'Contactos', icon: Mail, category: 'Social' },
+    { id: 'parceiros', label: 'Parceiros', icon: Building2, category: 'Social' },
     { id: 'sectores', label: 'Sectores', icon: List, category: 'Social' },
     { id: 'paises', label: 'Países', icon: Flag, category: 'Social' },
     { id: 'ferramentas', label: 'Ferramentas', icon: Cpu, category: 'Social' },
@@ -253,6 +259,7 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
                   {activeTab === 'sectores' && <CollectionManager colName="sectores" title="Sectores de Actuação" />}
                   {activeTab === 'paises' && <CollectionManager colName="paises" title="Países de Atuação" />}
                   {activeTab === 'ferramentas' && <CollectionManager colName="ferramentas" title="Ferramentas" />}
+                  {activeTab === 'parceiros' && <CollectionManager colName="parceiros" title="Parceiros" />}
                   {activeTab === 'config' && <EditorConfig />}
                   {activeTab === 'dados' && <ImportExportManager showStatus={showStatus} onClose={onClose} />}
                 </motion.div>
@@ -275,6 +282,33 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
+const compressImage = (file: File, maxWidth = 1200): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compressing to keep Firestore doc < 1MB
+      };
+    };
+  });
+};
+
 function ImportExportManager({ showStatus, onClose }: { showStatus: (m: string) => void, onClose: () => void }) {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -291,7 +325,8 @@ function ImportExportManager({ showStatus, onClose }: { showStatus: (m: string) 
       contactos: "{ id, tipo ('email','whatsapp','instagram'), etiqueta, valor, link, ordem (num) }",
       sectores: "{ id, nome, ordem (num) }",
       paises: "{ id, nome, bandeira (emoji), descricao, ordem (num) }",
-      ferramentas: "{ id, nome, grupo ('adobe' ou 'outras'), ordem (num) }"
+      ferramentas: "{ id, nome, grupo ('adobe' ou 'outras'), ordem (num) }",
+      parceiros: "{ id, nome, logo, link, ordem (num) }"
     };
 
     const prompt = `Aja como um engenheiro de dados especialista. Gere uma lista de dados no formato JSON puro para o meu portfólio.
@@ -336,6 +371,48 @@ INSTRUÇÕES:
       setInputText('');
     } catch (e) {
       showStatus('Erro: O texto não é um JSON válido.');
+    }
+    setImporting(false);
+  };
+
+  const seedFromConstants = async () => {
+    setImporting(true);
+    showStatus('A carregar dados padrão do sistema...');
+    try {
+      const batch = writeBatch(db);
+
+      // Single docs
+      batch.set(doc(db, 'perfil', 'principal'), { ...PERFIL_DATA, updatedAt: new Date().toISOString() });
+      batch.set(doc(db, 'configuracoes', 'global'), { ...CONFIG_GLOBALS, updatedAt: new Date().toISOString() });
+
+      // Collections
+      const listMappings: any = {
+        servicos: SERVICOS_DATA,
+        projectos: PROJECTOS_DATA,
+        metricas: METRICAS_DATA,
+        depoimentos: DEPOIMENTOS_DATA,
+        contactos: CONTACTOS_DATA,
+        sectores: SECTORES_DATA,
+        paises: PAISES_DATA,
+        ferramentas: FERRAMENTAS_DATA,
+        parceiros: PARCEIROS_DATA
+      };
+
+      for (const [col, data] of Object.entries(listMappings)) {
+        if (Array.isArray(data)) {
+          data.forEach((item: any) => {
+            const docId = item.id?.toString() || undefined;
+            const docRef = docId ? doc(db, col, docId) : doc(collection(db, col));
+            batch.set(docRef, { ...item, updatedAt: new Date().toISOString() });
+          });
+        }
+      }
+
+      await batch.commit();
+      showStatus('Base de dados inicializada com os mocks!');
+    } catch (e) {
+      console.error(e);
+      showStatus('Erro ao inicializar dados.');
     }
     setImporting(false);
   };
@@ -475,6 +552,71 @@ INSTRUÇÕES:
   return (
     <div className="space-y-12">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Bulk Image Upload Section */}
+        <div className="p-8 bg-brand-orange/5 rounded-2xl border border-brand-orange/10 flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-brand-orange/10 rounded-full flex items-center justify-center text-brand-orange mb-6">
+                <Upload className="h-8 w-8" />
+            </div>
+            <h3 className="text-xl font-display font-bold uppercase mb-2">Upload de Imagens em Massa</h3>
+            <p className="text-[11px] opacity-60 uppercase tracking-widest font-bold max-w-xs mb-8">
+              Selecione múltiplas imagens para criar automaticamente novos registos na coleção seleccionada.
+            </p>
+            
+            <label className="w-full bg-brand-orange text-white py-4 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-brand-dark transition-all cursor-pointer flex items-center justify-center gap-3 shadow-lg shadow-brand-orange/10">
+              <ImageIcon className="h-4 w-4" />
+              {importing ? 'Processando...' : 'Seleccionar Imagens'}
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                className="hidden" 
+                disabled={importing}
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files || []) as File[];
+                  if (files.length === 0) return;
+                  
+                  setImporting(true);
+                  showStatus(`Comprimindo e enviando ${files.length} imagens...`);
+                  
+                  try {
+                    const batch = writeBatch(db);
+                    for (const file of files) {
+                      const base64 = await compressImage(file);
+                      const newDocRef = doc(collection(db, targetCol));
+                      
+                      // Pre-fill based on collection
+                      const data: any = {
+                        ordem: 99,
+                        updatedAt: new Date().toISOString()
+                      };
+
+                      if (targetCol === 'projectos') {
+                        data.titulo = (file as File).name.replace(/\.[^/.]+$/, "");
+                        data.imagemDestaque = base64;
+                        data.categoria = 'Design';
+                      } else if (targetCol === 'servicos') {
+                        data.titulo = (file as File).name.replace(/\.[^/.]+$/, "");
+                        data.descricao = 'Descrição da imagem';
+                      } else if (targetCol === 'parceiros') {
+                        data.nome = (file as File).name.replace(/\.[^/.]+$/, "");
+                        data.logo = base64;
+                      } else {
+                        data.fotografia = base64;
+                      }
+
+                      batch.set(newDocRef, data);
+                    }
+                    await batch.commit();
+                    showStatus(`${files.length} imagens carregadas com sucesso!`);
+                  } catch (err) {
+                    showStatus('Erro ao carregar imagens.');
+                  }
+                  setImporting(false);
+                }}
+              />
+            </label>
+        </div>
+
         {/* Export Section */}
         <div className="p-8 bg-zinc-50 rounded-2xl border border-zinc-100 flex flex-col items-center text-center">
             <div className="w-16 h-16 bg-brand-orange/10 rounded-full flex items-center justify-center text-brand-orange mb-6">
@@ -518,6 +660,7 @@ INSTRUÇÕES:
                 <option value="sectores">Sectores</option>
                 <option value="paises">Países</option>
                 <option value="ferramentas">Ferramentas</option>
+                <option value="parceiros">Parceiros</option>
               </select>
 
               <button 
@@ -698,7 +841,17 @@ function EditorPerfil() {
   useEffect(() => {
     getDoc(doc(db, 'perfil', 'principal')).then(s => {
       if (s.exists()) setData(s.data());
-      else setData({ nomeCompleto: 'Adilson Pinto Amado', tagline: '', biografia: '', fotografia: '', labelBotaoInicio: 'Iniciar', labelBotaoAcaoFinal: 'Contactar' });
+      else setData({ 
+        nomeCompleto: 'Adilson Pinto Amado', 
+        destaqueNome: 'PINTO',
+        eyebrowEntrada: 'DESIGNER, LUANDA, ANGOLA',
+        tagline: '', 
+        biografia: '', 
+        fotografia: '', 
+        labelBotaoInicio: 'Começar', 
+        labelBotaoAcaoFinal: 'Solicitar Orçamento',
+        anoPortfolio: '2025'
+      });
     });
   }, []);
 
@@ -718,6 +871,14 @@ function EditorPerfil() {
           <input type="text" value={data.nomeCompleto} onChange={e => setData({...data, nomeCompleto: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
         </div>
         <div className="space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Sobrenome em Destaque (Laranja)</label>
+          <input type="text" value={data.destaqueNome} onChange={e => setData({...data, destaqueNome: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
+        </div>
+        <div className="space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Eyebrow (Texto topo topo)</label>
+          <input type="text" value={data.eyebrowEntrada} onChange={e => setData({...data, eyebrowEntrada: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
+        </div>
+        <div className="space-y-3">
           <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Tagline de Impacto</label>
           <input type="text" value={data.tagline} onChange={e => setData({...data, tagline: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
         </div>
@@ -726,12 +887,42 @@ function EditorPerfil() {
           <textarea value={data.biografia} onChange={e => setData({...data, biografia: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none h-32 transition-all font-medium leading-relaxed text-sm" />
         </div>
         <div className="space-y-3">
-          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">URL Fotografia</label>
-          <input type="text" value={data.fotografia} onChange={e => setData({...data, fotografia: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all text-[11px]" />
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Fotografia do Perfil</label>
+          <div className="flex items-center gap-4">
+            {data.fotografia && (
+              <div className="w-16 h-16 rounded-xl overflow-hidden grayscale border border-zinc-100">
+                <img src={data.fotografia} className="w-full h-full object-cover" />
+              </div>
+            )}
+            <label className="flex-1 bg-zinc-100 p-4 rounded-xl border border-dashed border-zinc-300 hover:bg-zinc-200 transition-all cursor-pointer flex flex-col items-center justify-center">
+              <Upload className="h-4 w-4 text-zinc-400 mb-1" />
+              <span className="text-[9px] font-bold uppercase text-zinc-500">Alterar Foto</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={async (e) => {
+                   const file = e.target.files?.[0];
+                   if (file) {
+                     const base64 = await compressImage(file, 800);
+                     setData({...data, fotografia: base64});
+                   }
+                }}
+              />
+            </label>
+          </div>
         </div>
         <div className="space-y-3">
           <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Ano do Portfolio</label>
-          <input type="text" value={data.anoPortfolio || '2025'} onChange={e => setData({...data, anoPortfolio: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
+          <input type="text" value={data.anoPortfolio} onChange={e => setData({...data, anoPortfolio: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
+        </div>
+        <div className="space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Label Botão Iniciar</label>
+          <input type="text" value={data.labelBotaoInicio} onChange={e => setData({...data, labelBotaoInicio: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
+        </div>
+        <div className="space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Label Ação Final</label>
+          <input type="text" value={data.labelBotaoAcaoFinal} onChange={e => setData({...data, labelBotaoAcaoFinal: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
         </div>
       </div>
       <button 
@@ -753,7 +944,13 @@ function EditorConfig() {
   useEffect(() => {
     getDoc(doc(db, 'configuracoes', 'global')).then(s => {
       if (s.exists()) setData(s.data());
-      else setData({ nomeAgencia: 'A-DESIGN', anoPortfolio: '2025', processoTrabalho: '', etiquetaRodapeContacto: 'Vamos Conversar' });
+      else setData({ 
+        nomeAgencia: 'A-DESIGN', 
+        anoPortfolio: '2025', 
+        servicosRodape: '',
+        processoTrabalho: '', 
+        etiquetaRodapeContacto: 'Vamos Conversar' 
+      });
     });
   }, []);
 
@@ -775,6 +972,10 @@ function EditorConfig() {
         <div className="space-y-3">
           <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Etiqueta Contacto</label>
           <input type="text" value={data.etiquetaRodapeContacto} onChange={e => setData({...data, etiquetaRodapeContacto: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
+        </div>
+        <div className="md:col-span-2 space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Serviços do Rodapé (Separados por vírgula)</label>
+          <input type="text" value={data.servicosRodape} onChange={e => setData({...data, servicosRodape: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
         </div>
         <div className="md:col-span-2 space-y-3">
           <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Processo de Trabalho (Impacto)</label>
@@ -801,7 +1002,51 @@ function CollectionManager({ colName, title }: { colName: string, title: string 
   }, [colName]);
 
   const addItem = async () => {
-    await addDoc(collection(db, colName), { titulo: 'Novo ' + title, ordem: items.length + 1 });
+    const defaultData: any = { 
+      ordem: items.length + 1,
+      updatedAt: new Date().toISOString(),
+      ativo: true
+    };
+
+    if (colName === 'servicos') {
+      defaultData.titulo = 'Novo Serviço';
+      defaultData.descricao = '';
+      defaultData.corFundo = 'azul-escuro';
+    } else if (colName === 'projectos') {
+      defaultData.titulo = 'Novo Projecto';
+      defaultData.categoria = 'Design';
+      defaultData.nomeCliente = '';
+      defaultData.ano = '2025';
+      defaultData.emDestaque = false;
+    } else if (colName === 'metricas') {
+      defaultData.valor = '0';
+      defaultData.sufixo = '';
+      defaultData.legenda = 'Nova Métrica';
+    } else if (colName === 'depoimentos') {
+      defaultData.texto = '';
+      defaultData.autor = 'Nome do Autor';
+      defaultData.cargo = '';
+    } else if (colName === 'contactos') {
+      defaultData.tipo = 'email';
+      defaultData.etiqueta = 'Novo Canal';
+      defaultData.valor = '';
+      defaultData.link = '';
+    } else if (colName === 'parceiros') {
+      defaultData.nome = 'Empresa';
+      defaultData.logo = '';
+      defaultData.link = '';
+    } else if (colName === 'sectores') {
+      defaultData.nome = 'Novo Sector';
+    } else if (colName === 'paises') {
+      defaultData.nome = 'Novo País';
+      defaultData.bandeira = '🌍';
+      defaultData.descricao = '';
+    } else if (colName === 'ferramentas') {
+      defaultData.nome = 'Nova Ferramenta';
+      defaultData.grupo = 'outras';
+    }
+
+    await addDoc(collection(db, colName), defaultData);
   };
 
   const deleteItem = async (id: string) => {
@@ -820,6 +1065,25 @@ function CollectionManager({ colName, title }: { colName: string, title: string 
     return 'titulo';
   };
 
+  const isImageField = (key: string) => {
+    return ['fotografia', 'imagemDestaque', 'bandeira', 'logo'].includes(key);
+  };
+
+  const getFields = (col: string) => {
+    const schemas: any = {
+      projectos: ['titulo', 'categoria', 'nomeCliente', 'imagemDestaque', 'emDestaque'],
+      servicos: ['titulo', 'descricao', 'corFundo', 'ativo'],
+      metricas: ['valor', 'sufixo', 'legenda'],
+      depoimentos: ['texto', 'autor', 'cargo', 'organizacao', 'iniciais'],
+      contactos: ['tipo', 'etiqueta', 'valor', 'link'],
+      sectores: ['nome'],
+      paises: ['nome', 'bandeira', 'descricao'],
+      ferramentas: ['nome', 'grupo'],
+      parceiros: ['nome', 'logo', 'link']
+    };
+    return schemas[col] || [];
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center bg-zinc-50 p-5 rounded-xl">
@@ -832,24 +1096,73 @@ function CollectionManager({ colName, title }: { colName: string, title: string 
       
       <div className="grid grid-cols-1 gap-3">
         {items.map((item) => (
-          <div key={item.id} className="p-3 bg-white border border-zinc-100 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-3 group hover:border-brand-orange/20 transition-all overflow-hidden relative">
-            <div className="w-10 h-10 bg-zinc-50 rounded-lg flex items-center justify-center font-mono text-[9px] font-bold text-zinc-300 shrink-0">
-               #{item.ordem || '0'}
+          <div key={item.id} className="p-6 bg-white border border-zinc-100 rounded-2xl flex flex-col gap-6 group hover:border-brand-orange/20 transition-all overflow-hidden relative shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-zinc-50 rounded-lg flex items-center justify-center font-mono text-[9px] font-bold text-zinc-300">
+                  #{item.ordem || '0'}
+                </div>
+                <h4 className="text-sm font-bold uppercase tracking-tight">{item[itemField(item)] || 'Sem Título'}</h4>
+              </div>
+              <button onClick={() => deleteItem(item.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-all">
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
-            <div className="flex-1 w-full space-y-0.5">
-               <input 
-                 type="text" 
-                 value={item[itemField(item)] || ''} 
-                 onChange={e => updateDoc(doc(db, colName, item.id), { [itemField(item)]: e.target.value })}
-                 className="w-full bg-transparent border-none outline-none font-bold uppercase text-[12px] focus:text-brand-orange transition-colors"
-               />
-               <p className="text-[8px] font-bold text-zinc-300 uppercase tracking-[0.2em] leading-none">{colName}</p>
-            </div>
-            
-            <div className="flex items-center gap-1">
-               <button onClick={() => deleteItem(item.id)} className="p-3 text-zinc-200 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                 <Trash2 className="h-4 w-4" />
-               </button>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {getFields(colName).map((field: string) => (
+                <div key={field} className="space-y-1.5">
+                  <label className="block text-[8px] font-bold uppercase tracking-[0.1em] text-zinc-400">{field}</label>
+                  {isImageField(field) ? (
+                    <div className="flex items-center gap-3">
+                      {item[field] && (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-50 border border-zinc-100 grayscale hover:grayscale-0 transition-all">
+                           <img src={item[field]} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <label className="flex-1 bg-zinc-50 px-3 py-2 rounded-lg border border-dashed border-zinc-200 hover:bg-zinc-100 cursor-pointer flex items-center justify-center gap-2">
+                        <Upload className="h-3 w-3 text-zinc-400" />
+                        <span className="text-[9px] font-bold uppercase text-zinc-400">Upload</span>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const base64 = await compressImage(file, 800);
+                              updateItem(item.id, field, base64);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  ) : typeof item[field] === 'boolean' ? (
+                    <button 
+                      onClick={() => updateItem(item.id, field, !item[field])}
+                      className={`w-full py-2 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all ${item[field] ? 'bg-brand-orange text-white' : 'bg-zinc-100 text-zinc-400'}`}
+                    >
+                      {item[field] ? 'Activo' : 'Inactivo'}
+                    </button>
+                  ) : (
+                    <input 
+                      type="text" 
+                      value={item[field] || ''} 
+                      onChange={e => updateItem(item.id, field, e.target.value)}
+                      className="w-full bg-zinc-50 rounded-lg p-2.5 text-[11px] font-bold outline-none focus:ring-1 focus:ring-brand-orange transition-all"
+                    />
+                  )}
+                </div>
+              ))}
+              <div className="space-y-1.5">
+                <label className="block text-[8px] font-bold uppercase tracking-[0.1em] text-zinc-400">Ordem</label>
+                <input 
+                  type="number" 
+                  value={item.ordem || 0} 
+                  onChange={e => updateItem(item.id, 'ordem', parseInt(e.target.value) || 0)}
+                  className="w-full bg-zinc-50 rounded-lg p-2.5 text-[11px] font-bold outline-none focus:ring-1 focus:ring-brand-orange transition-all"
+                />
+              </div>
             </div>
           </div>
         ))}

@@ -118,6 +118,18 @@
         "ordem": { "type": "number" }
       }
     },
+    "parceiro": {
+      "title": "Parceiro",
+      "description": "Logos de empresas parceiras ou clientes.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "logo": { "type": "string", "description": "Logo em base64 ou URL" },
+        "link": { "type": "string" },
+        "ordem": { "type": "number" }
+      }
+    },
     "configuracao": {
       "title": "Configuração Global",
       "description": "Textos globais e configurações de sistema.",
@@ -140,6 +152,7 @@
     "sectores/{sectorId}": { "schema": "sector", "description": "Lista de sectores de actuação" },
     "paises/{paisId}": { "schema": "pais", "description": "Lista de países de atuação" },
     "ferramentas/{ferramentaId}": { "schema": "ferramenta", "description": "Lista de ferramentas de trabalho" },
+    "parceiros/{parceiroId}": { "schema": "parceiro", "description": "Lista de logos de parceiros/clientes" },
     "configuracoes/global": { "schema": "configuracao", "description": "Configurações globais" }
   }
 }

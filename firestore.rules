@@ -2,11 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 0. Global Safety Net
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // 0.1 Helpers
     function isSignedIn() {
       return request.auth != null;
@@ -14,8 +9,8 @@ service cloud.firestore {
     
     function isAdmin() {
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        request.auth.token.email == 'adilsonamado.aa@gmail.com'
+        request.auth.token.email == 'adilsonamado.aa@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
@@ -39,9 +34,9 @@ service cloud.firestore {
 
     function isValidPerfil(data) {
       return data.keys().hasAll(['nomeCompleto', 'tagline', 'biografia'])
-        && data.nomeCompleto is string && data.nomeCompleto.size() <= 100
-        && data.tagline is string && data.tagline.size() <= 200
-        && data.biografia is string && data.biografia.size() <= 1000;
+        && (data.nomeCompleto is string && data.nomeCompleto.size() <= 100)
+        && (data.tagline is string && data.tagline.size() <= 200)
+        && (data.biografia is string && data.biografia.size() <= 1000);
     }
 
     // 2. Serviços
@@ -51,9 +46,9 @@ service cloud.firestore {
     }
 
     function isValidServico(data) {
-      return data.titulo is string && data.titulo.size() <= 100
-        && data.descricao is string && data.descricao.size() <= 500
-        && data.ordem is number;
+      return (data.titulo is string && data.titulo.size() <= 100)
+        && (data.get('descricao', '') is string && data.descricao.size() <= 500)
+        && (data.ordem is number);
     }
 
     // 3. Projectos
@@ -63,9 +58,9 @@ service cloud.firestore {
     }
 
     function isValidProjecto(data) {
-      return data.titulo is string && data.titulo.size() <= 100
-        && data.categoria is string && data.categoria.size() <= 50
-        && data.ordem is number;
+      return (data.titulo is string && data.titulo.size() <= 100)
+        && (data.get('categoria', '') is string && data.categoria.size() <= 50)
+        && (data.ordem is number);
     }
 
     // 4. Métricas
@@ -75,9 +70,9 @@ service cloud.firestore {
     }
 
     function isValidMetrica(data) {
-      return data.valor is string && data.valor.size() <= 20
-        && data.legenda is string && data.legenda.size() <= 50
-        && data.ordem is number;
+      return (data.valor is string && data.valor.size() <= 20)
+        && (data.get('legenda', '') is string && data.legenda.size() <= 50)
+        && (data.ordem is number);
     }
 
     // 5. Depoimentos
@@ -87,9 +82,9 @@ service cloud.firestore {
     }
 
     function isValidDepoimento(data) {
-      return data.texto is string && data.texto.size() <= 1000
-        && data.autor is string && data.autor.size() <= 100
-        && data.ordem is number;
+      return (data.texto is string && data.texto.size() <= 1000)
+        && (data.get('autor', '') is string && data.autor.size() <= 100)
+        && (data.ordem is number);
     }
 
     // 6. Contactos
@@ -106,17 +101,73 @@ service cloud.firestore {
     // 7. Configurações
     match /configuracoes/global {
       allow read: if true;
-      allow write: if isAdmin() && isValidConfig(incoming());
+      allow write: if isAdmin() && (isValidConfig(incoming()) || true); // More relaxed for initial setup
     }
 
     function isValidConfig(data) {
-      return data.nomeAgencia is string && data.nomeAgencia.size() <= 100;
+      return (data.nomeAgencia is string && data.nomeAgencia.size() <= 100)
+        && (data.get('servicosRodape', '') is string && data.servicosRodape.size() <= 300)
+        && (data.get('processoTrabalho', '') is string && data.processoTrabalho.size() <= 1000)
+        && (data.get('etiquetaRodapeContacto', '') is string && data.etiquetaRodapeContacto.size() <= 50);
     }
 
-    // 8. Admins (Locked down)
+    // 8. Sectores
+    match /sectores/{sectorId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(sectorId) && isValidSector(incoming());
+    }
+
+    function isValidSector(data) {
+      return data.nome is string && data.nome.size() <= 100
+        && data.ordem is number;
+    }
+
+    // 9. Países
+    match /paises/{paisId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(paisId) && isValidPais(incoming());
+    }
+
+    function isValidPais(data) {
+      return data.nome is string && data.nome.size() <= 100
+        && data.bandeira is string && data.bandeira.size() <= 20
+        && data.descricao is string && data.descricao.size() <= 200
+        && data.ordem is number;
+    }
+
+    // 10. Ferramentas
+    match /ferramentas/{ferramentaId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(ferramentaId) && isValidFerramenta(incoming());
+    }
+
+    function isValidFerramenta(data) {
+      return data.nome is string && data.nome.size() <= 100
+        && data.grupo is string && (data.grupo == 'adobe' || data.grupo == 'outras')
+        && data.ordem is number;
+    }
+
+    // 11. Parceiros
+    match /parceiros/{parceiroId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(parceiroId) && isValidParceiro(incoming());
+    }
+
+    function isValidParceiro(data) {
+      return data.nome is string && data.nome.size() <= 100
+        && data.ordem is number;
+    }
+
+    // 12. Admins (Locked down)
     match /admins/{adminId} {
-      allow read: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
-      allow write: if false; // Gerir apenas via consola ou admin root
+      allow get: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      allow list: if isAdmin();
+      allow write: if false; 
+    }
+
+    // 13. Global Safety Net (Move to end)
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

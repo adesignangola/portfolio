@@ -10,12 +10,12 @@ import { usePortfolio } from './hooks/usePortfolio';
 import AdminPanel from './components/AdminPanel';
 
 export default function App() {
-  const { perfil, servicos, metricas, projectos, contactos, sectores, paises, ferramentas, depoimentos, config, loading } = usePortfolio();
+  const { perfil, servicos, metricas, projectos, contactos, sectores, paises, ferramentas, depoimentos, parceiros, config, loading } = usePortfolio();
   const [view, setView] = useState<'entry' | 'presentation'>('entry');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPortrait, setIsPortrait] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
-  const totalSlides = 8;
+  const totalSlides = 9;
 
   const nextSlide = () => setCurrentSlide((prev) => Math.min(prev + 1, totalSlides - 1));
   const prevSlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
@@ -122,6 +122,7 @@ export default function App() {
               paises={paises}
               ferramentas={ferramentas}
               depoimentos={depoimentos}
+              parceiros={parceiros}
               config={config}
             />
           </>
@@ -252,7 +253,9 @@ function EntryScreen({
               {metricas.slice(0, 3).map((stat) => (
                 <div key={stat.id || stat.legenda} className="flex flex-col border-t border-black/5 pt-3 lg:pt-4 text-left lg:text-right w-full">
                   <span className="text-xl lg:text-3xl font-display font-bold text-brand-dark leading-none mb-1">{stat.valor}{stat.sufixo}</span>
-                  <span className="text-[7px] lg:text-[8px] font-bold tracking-widest text-brand-orange uppercase leading-tight">{stat.legenda.replace('\n', ' ')}</span>
+                  <span className="text-[7px] lg:text-[8px] font-bold tracking-widest text-brand-orange uppercase leading-tight">
+                    {stat.legenda ? stat.legenda.replace('\n', ' ') : ''}
+                  </span>
                 </div>
               ))}
             </motion.div>
@@ -263,7 +266,7 @@ function EntryScreen({
       {/* Footer */}
       <footer className="p-6 lg:p-10 flex justify-center items-center bg-white shrink-0">
         <div className="flex items-center gap-4 text-[9px] lg:text-[10px] font-bold tracking-[0.3em] uppercase opacity-30 text-center flex-wrap justify-center">
-          {config.servicosRodape.split(',').map((s: string, i: number, arr: any[]) => (
+          {config?.servicosRodape?.split(',').map((s: string, i: number, arr: any[]) => (
             <React.Fragment key={s}>
               <span>{s.trim()}</span>
               {i < arr.length - 1 && <span className="text-brand-orange">•</span>}
@@ -294,6 +297,7 @@ function PresentationMode({
   paises,
   ferramentas,
   depoimentos,
+  parceiros,
   config
 }: { 
   currentSlide: number; 
@@ -310,18 +314,20 @@ function PresentationMode({
   paises: any[];
   ferramentas: any[];
   depoimentos: any[];
+  parceiros: any[];
   config: any;
   key?: string;
 }) {
   const slides = [
-    <Slide01WhoIAm key="01" perfil={perfil} />,
-    <Slide02WhatIDo key="02" servicos={servicos} />,
-    <Slide03Results key="03" metricas={metricas} />,
-    <Slide04Portfolio key="04" projectos={projectos} />,
-    <Slide05Markets key="05" sectores={sectores} paises={paises} />,
-    <Slide06Testimonials key="06" depoimentos={depoimentos} />,
-    <Slide07Tools key="07" ferramentas={ferramentas} config={config} />,
-    <Slide08Contact key="08" contactos={contactos} config={config} perfil={perfil} />
+    <Slide01WhoIAm perfil={perfil} />,
+    <Slide02WhatIDo servicos={servicos} />,
+    <Slide03Results metricas={metricas} />,
+    <Slide04Portfolio projectos={projectos} />,
+    <Slide05Markets sectores={sectores} paises={paises} />,
+    <Slide09Partners parceiros={parceiros} />,
+    <Slide06Testimonials depoimentos={depoimentos} />,
+    <Slide07Tools ferramentas={ferramentas} config={config} />,
+    <Slide08Contact contactos={contactos} config={config} perfil={perfil} />
   ];
 
   const bgColorMap = [
@@ -330,6 +336,7 @@ function PresentationMode({
     'bg-brand-orange', // 03
     'bg-white',        // 04
     'bg-brand-cream',  // 05
+    'bg-white',        // 09 (Partners)
     'bg-brand-dark',   // 06
     'bg-white',        // 07
     'bg-brand-orange'  // 08
@@ -413,15 +420,13 @@ function SlideWrapper({
   eyebrow, 
   title, 
   isDark = false, 
-  isOrange = false,
-  key
+  isOrange = false
 }: { 
   children: React.ReactNode, 
   eyebrow: string, 
   title: string | React.ReactNode, 
   isDark?: boolean, 
-  isOrange?: boolean,
-  key?: string
+  isOrange?: boolean
 }) {
   const textColor = (isDark || isOrange) ? 'text-white' : 'text-brand-dark';
   const eyebrowColor = isOrange ? 'text-white/60' : 'text-brand-orange';
@@ -450,10 +455,10 @@ function SlideWrapper({
 }
 
 /* 4. SLIDE 01 - QUEM SOU */
-function Slide01WhoIAm({ perfil, key }: { perfil: any, key?: string }) {
+function Slide01WhoIAm({ perfil }: { perfil: any }) {
   const nomePartes = perfil.nomeCompleto.split(' ');
   return (
-    <SlideWrapper eyebrow="Quem Sou" title={<>{nomePartes[0]} <br /> {perfil.destaqueNome || nomePartes[1]}</>} isDark key={key}>
+    <SlideWrapper eyebrow="Quem Sou" title={<>{nomePartes[0]} <br /> {perfil.destaqueNome || nomePartes[1]}</>} isDark>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-20 items-start lg:items-center flex-1 h-full mt-2 lg:mt-4">
         <div className="lg:col-span-1 border-l border-white/20 h-full hidden lg:block" />
         <div className="lg:col-span-6 text-white flex flex-col justify-center">
@@ -479,9 +484,9 @@ function Slide01WhoIAm({ perfil, key }: { perfil: any, key?: string }) {
 }
 
 /* 5. SLIDE 02 - O QUE FAÇO */
-function Slide02WhatIDo({ servicos, key }: { servicos: any[], key?: string }) {
+function Slide02WhatIDo({ servicos }: { servicos: any[] }) {
   return (
-    <SlideWrapper eyebrow="Expertise" title="O QUE FAÇO" key={key}>
+    <SlideWrapper eyebrow="Expertise" title="O QUE FAÇO">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6 flex-1">
         {servicos.map((s) => (
           <div 
@@ -504,9 +509,9 @@ function Slide02WhatIDo({ servicos, key }: { servicos: any[], key?: string }) {
 }
 
 /* 6. SLIDE 03 - NÚMEROS QUE FALAM */
-function Slide03Results({ metricas, key }: { metricas: any[], key?: string }) {
+function Slide03Results({ metricas }: { metricas: any[] }) {
   return (
-    <SlideWrapper eyebrow="Performance" title={<>NÚMEROS QUE <br /> FALAM</>} isOrange key={key}>
+    <SlideWrapper eyebrow="Performance" title={<>NÚMEROS QUE <br /> FALAM</>} isOrange>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4 flex-1">
         {metricas.map(m => (
           <div key={m.id || m.legenda} className="bg-black/10 p-5 lg:p-10 flex flex-col justify-between border border-white/10 group hover:bg-black/20 transition-all">
@@ -523,9 +528,9 @@ function Slide03Results({ metricas, key }: { metricas: any[], key?: string }) {
 }
 
 /* 7. SLIDE 04 - PORTFÓLIO */
-function Slide04Portfolio({ projectos, key }: { projectos: any[], key?: string }) {
+function Slide04Portfolio({ projectos }: { projectos: any[] }) {
   return (
-    <SlideWrapper eyebrow="Trabalhos" title="PROJETOS" key={key}>
+    <SlideWrapper eyebrow="Trabalhos" title="PROJETOS">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 bg-black/5 border border-black/5 flex-1">
         {projectos.slice(0, 4).map((p, idx) => (
           <div 
@@ -561,7 +566,7 @@ function Slide04Portfolio({ projectos, key }: { projectos: any[], key?: string }
 }
 
 /* 8. SLIDE 05 - CLIENTES E SECTORES */
-function Slide05Markets({ sectores, paises, key }: { sectores: any[], paises: any[], key?: string }) {
+function Slide05Markets({ sectores, paises }: { sectores: any[], paises: any[] }) {
   const displaySectores = sectores.length > 0 ? sectores : [{ id: '1', nome: 'Sectores em Breve' }];
   const displayPaises = paises.length > 0 ? paises : [
     { id: '1', nome: 'Angola', bandeira: '🇦🇴', descricao: 'Mercado Principal' },
@@ -569,7 +574,7 @@ function Slide05Markets({ sectores, paises, key }: { sectores: any[], paises: an
   ];
 
   return (
-    <SlideWrapper eyebrow="Global" title={<>CLIENTES E <br /> SECTORES</>} key={key}>
+    <SlideWrapper eyebrow="Global" title={<>CLIENTES E <br /> SECTORES</>}>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-20 flex-1">
         <div className="lg:col-span-6">
           <div className="flex items-center gap-2 lg:gap-4 mb-4 lg:mb-8">
@@ -610,14 +615,14 @@ function Slide05Markets({ sectores, paises, key }: { sectores: any[], paises: an
 }
 
 /* 9. SLIDE 06 - DEPOIMENTOS */
-function Slide06Testimonials({ depoimentos, key }: { depoimentos: any[], key?: string }) {
+function Slide06Testimonials({ depoimentos }: { depoimentos: any[] }) {
   const displayDepoimentos = depoimentos.length > 0 ? depoimentos : [
     { id: 1, autor: 'Cliente Alpha', cargo: 'CEO', organizacao: 'Empresa X', texto: 'Experiência incrível e profissionalismo de alto nível.', iniciais: 'CA' },
     { id: 2, autor: 'Cliente Beta', cargo: 'Fundador', organizacao: 'Startup Y', texto: 'A identidade visual criada mudou o nosso negócio.', iniciais: 'CB' }
   ];
 
   return (
-    <SlideWrapper eyebrow="Confiança" title="TESTEMUNHOS" isDark key={key}>
+    <SlideWrapper eyebrow="Confiança" title="TESTEMUNHOS" isDark>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-4 flex-1">
         {displayDepoimentos.map(d => (
           <div key={d.id} className="bg-white/5 border border-white/10 p-6 lg:p-12 relative text-white flex flex-col justify-between group hover:bg-white/10 transition-all">
@@ -642,7 +647,7 @@ function Slide06Testimonials({ depoimentos, key }: { depoimentos: any[], key?: s
 }
 
 /* 10. SLIDE 07 - FERRAMENTAS */
-function Slide07Tools({ ferramentas, config, key }: { ferramentas: any[], config: any, key?: string }) {
+function Slide07Tools({ ferramentas, config }: { ferramentas: any[], config: any }) {
   const adobeSuite = ferramentas.filter(f => f.grupo === 'adobe');
   const outrasPlataformas = ferramentas.filter(f => f.grupo === 'outras');
 
@@ -650,7 +655,7 @@ function Slide07Tools({ ferramentas, config, key }: { ferramentas: any[], config
   const displayOutras = outrasPlataformas.length > 0 ? outrasPlataformas : [{ id: 1, nome: 'Outras Ferramentas' }];
 
   return (
-    <SlideWrapper eyebrow="Toolkit" title="FERRAMENTAS" key={key}>
+    <SlideWrapper eyebrow="Toolkit" title="FERRAMENTAS">
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-20 flex-1">
           <div>
               <div className="flex items-center gap-4 mb-6 lg:mb-10">
@@ -692,20 +697,55 @@ function Slide07Tools({ ferramentas, config, key }: { ferramentas: any[], config
   );
 }
 
+/* 12. SLIDE 09 - PARCEIROS */
+function Slide09Partners({ parceiros }: { parceiros: any[] }) {
+  const displayParceiros = parceiros.length > 0 ? parceiros : [
+    { id: 1, nome: 'Empresa A', logo: 'https://via.placeholder.com/150' },
+    { id: 2, nome: 'Empresa B', logo: 'https://via.placeholder.com/150' },
+    { id: 3, nome: 'Empresa C', logo: 'https://via.placeholder.com/150' },
+    { id: 4, nome: 'Empresa D', logo: 'https://via.placeholder.com/150' }
+  ];
+
+  return (
+    <SlideWrapper eyebrow="Network" title="PARCEIROS">
+      <div className="flex-1 flex flex-col justify-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
+           {displayParceiros.map(p => (
+             <motion.div 
+               key={p.id}
+               whileHover={{ y: -5 }}
+               className="bg-zinc-50 border border-zinc-100 p-8 lg:p-12 flex items-center justify-center grayscale hover:grayscale-0 transition-all group"
+             >
+                {p.logo ? (
+                  <img 
+                    src={p.logo} 
+                    alt={p.nome} 
+                    className="max-h-12 lg:max-h-20 w-auto opacity-40 group-hover:opacity-100 transition-opacity" 
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="font-bold text-zinc-300 uppercase tracking-widest text-[10px]">{p.nome}</span>
+                )}
+             </motion.div>
+           ))}
+        </div>
+      </div>
+    </SlideWrapper>
+  );
+}
+
 /* 11. SLIDE 08 - CONTACTO */
 function Slide08Contact({ 
   contactos, 
   config, 
-  perfil,
-  key
+  perfil
 }: { 
   contactos: any[]; 
   config: any; 
-  perfil: any,
-  key?: string
+  perfil: any
 }) {
   return (
-    <SlideWrapper eyebrow={config.etiquetaRodapeContacto || 'Vamos Conversar'} title={<>CONECTAR E <br /> CRIAR</>} isOrange key={key}>
+    <SlideWrapper eyebrow={config.etiquetaRodapeContacto || 'Vamos Conversar'} title={<>CONECTAR E <br /> CRIAR</>} isOrange>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-16 flex-1 items-end">
         <div className="lg:col-span-7 space-y-1 lg:space-y-2">
           {contactos.map(c => (

@@ -20,6 +20,7 @@ export function usePortfolio() {
   const [paises, setPaises] = useState<any[]>([]);
   const [ferramentas, setFerramentas] = useState<any[]>([]);
   const [depoimentos, setDepoimentos] = useState<any[]>([]);
+  const [parceiros, setParceiros] = useState<any[]>([]);
   const [config, setConfig] = useState(STATIC_CONFIG);
   const [loading, setLoading] = useState(true);
 
@@ -68,6 +69,10 @@ export function usePortfolio() {
       if (list.length > 0) setDepoimentos(list);
     });
 
+    const unsubParceiros = subscribeToCollection('parceiros', (list) => {
+      if (list.length > 0) setParceiros(list);
+    });
+
     return () => {
       unsubPerfil();
       unsubConfig();
@@ -79,8 +84,9 @@ export function usePortfolio() {
       unsubPaises();
       unsubFerramentas();
       unsubDepoimentos();
+      unsubParceiros();
     };
   }, []);
 
-  return { perfil, servicos, metricas, projectos, contactos, sectores, paises, ferramentas, depoimentos, config, loading };
+  return { perfil, servicos, metricas, projectos, contactos, sectores, paises, ferramentas, depoimentos, parceiros, config, loading };
 }

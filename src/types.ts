@@ -11,7 +11,7 @@ export interface Perfil {
   biografia: string;
   labelBotaoInicio: string;
   labelBotaoAcaoFinal: string;
-  tituloApresentacao: string; // Ex: "Portfolio 2025"
+  anoPortfolio: string; // Alterado para string conforme pedido no texto "Portfolio 2025"
 }
 
 export interface Servico {
@@ -20,6 +20,7 @@ export interface Servico {
   descricao: string;
   corFundo: 'azul-escuro' | 'laranja';
   ordem: number;
+  ativo: boolean;
 }
 
 export interface Projecto {
@@ -29,8 +30,10 @@ export interface Projecto {
   nomeCliente: string;
   categoria: string;
   descricao: string;
-  ano: number;
+  ano: string; // Alterado para string para flexibilidade (ex: "2024")
   emDestaque: boolean;
+  ordem: number;
+  ativo: boolean;
 }
 
 export interface Metrica {
@@ -38,18 +41,24 @@ export interface Metrica {
   valor: string;
   sufixo: string;
   legenda: string;
+  ordem: number;
+  ativo: boolean;
 }
 
 export interface Sector {
   id: string;
   nome: string;
+  ordem: number;
+  ativo: boolean;
 }
 
 export interface Pais {
   id: string;
   nome: string;
+  bandeira: string; // Usar emoji ou URL
   descricao: string;
-  emoji: string;
+  ordem: number;
+  ativo: boolean;
 }
 
 export interface Depoimento {
@@ -58,28 +67,42 @@ export interface Depoimento {
   autor: string;
   cargo: string;
   organizacao: string;
-  fotografiaAutor?: string;
   iniciais: string;
+  emDestaque: boolean;
+  ordem: number;
+  ativo: boolean;
 }
 
 export interface Ferramenta {
   id: string;
   nome: string;
   grupo: 'adobe' | 'outras';
+  ordem: number;
+  ativo: boolean;
+}
+
+export interface Parceiro {
+  id: string;
+  nome: string;
+  logo: string;
+  link?: string;
+  ordem: number;
+  ativo: boolean;
 }
 
 export interface Contacto {
   id: string;
-  etiqueta: string;
-  valor: string;
-  tipo: 'email' | 'whatsapp' | 'instagram';
+  etiqueta: string; // Ex: "Email"
+  valor: string; // Ex: "contato@..."
+  tipo: 'email' | 'whatsapp' | 'instagram' | 'linkedin' | 'map' | 'tel';
   link: string;
+  ordem: number;
+  ativo: boolean;
 }
 
 export interface ConfigGlobals {
-  processoTrabalho: string;
-  servicosRodape: string;
   nomeAgencia: string;
-  anoPortfolio: number;
+  servicosRodape: string;
+  processoTrabalho: string;
   etiquetaRodapeContacto: string;
 }
