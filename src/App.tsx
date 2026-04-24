@@ -15,7 +15,17 @@ export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPortrait, setIsPortrait] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [adminClicks, setAdminClicks] = useState(0);
   const totalSlides = 9;
+
+  useEffect(() => {
+    const checkOrientation = () => {
+      setIsPortrait(window.innerHeight > window.innerWidth && window.innerWidth < 1024);
+    };
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    return () => window.removeEventListener('resize', checkOrientation);
+  }, []);
 
   if (loading) {
     return (
@@ -32,36 +42,7 @@ export default function App() {
   const prevSlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
 
   useEffect(() => {
-    const checkOrientation = () => {
-      setIsPortrait(window.innerHeight > window.innerWidth && window.innerWidth < 1024);
-    };
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    return () => window.removeEventListener('resize', checkOrientation);
-  }, []);
-
-  const handleStart = async () => {
-    setView('presentation');
-    setCurrentSlide(0);
-
-    // Tentar forçar horizontal em dispositivos móveis
-    try {
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen();
-      }
-      if ((screen.orientation as any) && (screen.orientation as any).lock) {
-        await (screen.orientation as any).lock('landscape');
-      }
-    } catch (e) {
-      console.log("Auto-rotate/Fullscreen not supported or blocked by browser.");
-    }
-  };
-
-  const [adminClicks, setAdminClicks] = useState(0);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle Admin: Ctrl + Alt + A (using code for better reliability)
       if (e.ctrlKey && e.altKey && e.code === 'KeyA') {
         e.preventDefault();
         setShowAdmin(prev => !prev);
@@ -77,6 +58,22 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [view]);
 
+  const handleStart = async () => {
+    setView('presentation');
+    setCurrentSlide(0);
+
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+      if ((screen.orientation as any) && (screen.orientation as any).lock) {
+        await (screen.orientation as any).lock('landscape');
+      }
+    } catch (e) {
+      console.log("Auto-rotate/Fullscreen not supported or blocked by browser.");
+    }
+  };
+
   const handleLogoClick = () => {
     setAdminClicks(prev => {
       const next = prev + 1;
@@ -86,7 +83,6 @@ export default function App() {
       }
       return next;
     });
-    // Reset clicks after 2 seconds of inactivity
     setTimeout(() => setAdminClicks(0), 2000);
   };
 
