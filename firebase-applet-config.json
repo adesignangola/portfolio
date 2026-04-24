@@ -3,7 +3,7 @@
   "appId": "1:746913001763:web:65ec9819dd2e48b9979c96",
   "apiKey": "AIzaSyAmd4EpsQ541H4SKcPWB2wFFWp6TL6uigE",
   "authDomain": "ivory-bit-462207-f4.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-e2125916-904e-4cbc-8c68-d45fc00f89c5",
+  "firestoreDatabaseId": "(default)",
   "storageBucket": "ivory-bit-462207-f4.firebasestorage.app",
   "messagingSenderId": "746913001763",
   "measurementId": ""
