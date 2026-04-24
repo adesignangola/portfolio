@@ -158,7 +158,19 @@ service cloud.firestore {
         && data.ordem is number;
     }
 
-    // 12. Admins (Locked down)
+    // 12. QuemSou (Slide 01)
+    match /quemsou/principal {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 13. Slides (Títulos dos slides)
+    match /slides/{slideId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(slideId);
+    }
+
+    // 14. Admins (Locked down)
     match /admins/{adminId} {
       allow get: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
       allow list: if isAdmin();

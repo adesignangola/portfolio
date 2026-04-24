@@ -10,7 +10,7 @@ import { usePortfolio } from './hooks/usePortfolio';
 import AdminPanel from './components/AdminPanel';
 
 export default function App() {
-  const { perfil, servicos, metricas, projectos, contactos, sectores, paises, ferramentas, depoimentos, parceiros, config, loading } = usePortfolio();
+  const { perfil, servicos, metricas, projectos, contactos, sectores, paises, ferramentas, depoimentos, parceiros, config, slides, quemSou, loading } = usePortfolio();
   const [view, setView] = useState<'entry' | 'presentation'>('entry');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPortrait, setIsPortrait] = useState(false);
@@ -26,17 +26,6 @@ export default function App() {
     window.addEventListener('resize', checkOrientation);
     return () => window.removeEventListener('resize', checkOrientation);
   }, []);
-
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-white z-[200] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm font-bold uppercase tracking-widest text-brand-dark/40">A carregar...</p>
-        </div>
-      </div>
-    );
-  }
 
   const nextSlide = () => setCurrentSlide((prev) => Math.min(prev + 1, totalSlides - 1));
   const prevSlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
@@ -57,6 +46,17 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [view]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-white z-[200] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-bold uppercase tracking-widest text-brand-dark/40">A carregar...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleStart = async () => {
     setView('presentation');
@@ -131,6 +131,8 @@ export default function App() {
               depoimentos={depoimentos}
               parceiros={parceiros}
               config={config}
+              slideConfigs={slides}
+              quemSou={quemSou}
             />
           </>
         )}
@@ -305,7 +307,9 @@ function PresentationMode({
   ferramentas,
   depoimentos,
   parceiros,
-  config
+  config,
+  slideConfigs,
+  quemSou
 }: { 
   currentSlide: number; 
   totalSlides: number;
@@ -323,18 +327,19 @@ function PresentationMode({
   depoimentos: any[];
   parceiros: any[];
   config: any;
+  slideConfigs: any[];
   key?: string;
 }) {
   const slides = [
-    <Slide01WhoIAm perfil={perfil} />,
-    <Slide02WhatIDo servicos={servicos} />,
-    <Slide03Results metricas={metricas} />,
-    <Slide04Portfolio projectos={projectos} />,
-    <Slide05Markets sectores={sectores} paises={paises} />,
-    <Slide09Partners parceiros={parceiros} />,
-    <Slide06Testimonials depoimentos={depoimentos} />,
-    <Slide07Tools ferramentas={ferramentas} config={config} />,
-    <Slide08Contact contactos={contactos} config={config} perfil={perfil} />
+    <Slide01WhoIAm quemSou={quemSou} slideConfig={slideConfigs[0]} />,
+    <Slide02WhatIDo servicos={servicos} slideConfig={slideConfigs[1]} />,
+    <Slide03Results metricas={metricas} slideConfig={slideConfigs[2]} />,
+    <Slide04Portfolio projectos={projectos} slideConfig={slideConfigs[3]} />,
+    <Slide05Markets sectores={sectores} paises={paises} slideConfig={slideConfigs[4]} />,
+    <Slide09Partners parceiros={parceiros} slideConfig={slideConfigs[5]} />,
+    <Slide06Testimonials depoimentos={depoimentos} slideConfig={slideConfigs[6]} />,
+    <Slide07Tools ferramentas={ferramentas} config={config} slideConfig={slideConfigs[7]} />,
+    <Slide08Contact contactos={contactos} config={config} perfil={perfil} slideConfig={slideConfigs[8]} />
   ];
 
   const bgColorMap = [
@@ -462,18 +467,19 @@ function SlideWrapper({
 }
 
 /* SLIDE 01 - QUEM SOU */
-function Slide01WhoIAm({ perfil }: { perfil: any }) {
-  const nomePartes = (perfil?.nomeCompleto || 'Adilson Pinto Amado').split(' ');
+function Slide01WhoIAm({ quemSou, slideConfig }: { quemSou: any, slideConfig?: any }) {
+  const titleText = slideConfig?.titulo || 'QUEM SOU';
+  const eyebrowText = slideConfig?.eyebrow || 'Quem Sou';
   return (
-    <SlideWrapper eyebrow="Quem Sou" title={<>{nomePartes[0]} <br /> {perfil?.destaqueNome || nomePartes[1]}</>} isDark>
+    <SlideWrapper eyebrow={eyebrowText} title={<>{quemSou?.nomePrimeiraLinha || 'Adilson'} <br /> {quemSou?.nomeDestaque || 'Pinto'}</>} isDark>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-20 items-start lg:items-center flex-1 h-full mt-2 lg:mt-4">
         <div className="lg:col-span-1 border-l border-white/20 h-full hidden lg:block" />
         <div className="lg:col-span-6 text-white flex flex-col justify-center">
           <p className="text-xs lg:text-xl lg:opacity-90 leading-relaxed font-medium">
-             {perfil?.biografia || 'Designer com experiência em identidade visual e comunicação criativa.'}
+             {quemSou?.biografia || 'Designer com experiência em identidade visual e comunicação criativa.'}
           </p>
           <div className="mt-4 lg:mt-12 flex gap-2 lg:gap-3 flex-wrap">
-            {['IDENTIDADE VISUAL', 'BRANDING', 'DESIGN'].map(t => (
+            {(quemSou?.tags || ['IDENTIDADE VISUAL', 'BRANDING', 'DESIGN']).map(t => (
               <span key={t} className="bg-brand-orange/10 border border-brand-orange/20 text-brand-orange px-3 lg:px-6 py-1.5 lg:py-2.5 font-bold text-[7px] lg:text-[10px] tracking-widest uppercase rounded-full">
                 {t}
               </span>
@@ -482,7 +488,11 @@ function Slide01WhoIAm({ perfil }: { perfil: any }) {
         </div>
         <div className="lg:col-span-5 flex justify-center lg:justify-end">
           <div className="w-full max-w-[140px] sm:max-w-[320px] aspect-[4/5] overflow-hidden grayscale border border-white/10 shadow-2xl brightness-105">
-            <img src={perfil.fotografia} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            {quemSou?.fotografia ? (
+              <img src={quemSou.fotografia} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-full h-full bg-brand-dark/50 flex items-center justify-center text-white/30">Sem foto</div>
+            )}
           </div>
         </div>
       </div>
@@ -491,9 +501,11 @@ function Slide01WhoIAm({ perfil }: { perfil: any }) {
 }
 
 /* 5. SLIDE 02 - O QUE FAÇO */
-function Slide02WhatIDo({ servicos }: { servicos: any[] }) {
+function Slide02WhatIDo({ servicos, slideConfig }: { servicos: any[], slideConfig?: any }) {
+  const titleText = slideConfig?.titulo || 'O QUE FAÇO';
+  const eyebrowText = slideConfig?.eyebrow || 'Expertise';
   return (
-    <SlideWrapper eyebrow="Expertise" title="O QUE FAÇO">
+    <SlideWrapper eyebrow={eyebrowText} title={titleText}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6 flex-1">
         {servicos.map((s) => (
           <div 
@@ -516,9 +528,11 @@ function Slide02WhatIDo({ servicos }: { servicos: any[] }) {
 }
 
 /* 6. SLIDE 03 - NÚMEROS QUE FALAM */
-function Slide03Results({ metricas }: { metricas: any[] }) {
+function Slide03Results({ metricas, slideConfig }: { metricas: any[], slideConfig?: any }) {
+  const titleText = slideConfig?.titulo || 'NÚMEROS QUE FALAM';
+  const eyebrowText = slideConfig?.eyebrow || 'Performance';
   return (
-    <SlideWrapper eyebrow="Performance" title={<>NÚMEROS QUE <br /> FALAM</>} isOrange>
+    <SlideWrapper eyebrow={eyebrowText} title={<>{titleText.split(' ').slice(0, 2).join(' ')} <br /> {titleText.split(' ').slice(2).join(' ')}</>} isOrange>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4 flex-1">
         {metricas.map(m => (
           <div key={m.id || m.legenda} className="bg-black/10 p-5 lg:p-10 flex flex-col justify-between border border-white/10 group hover:bg-black/20 transition-all">
@@ -535,9 +549,11 @@ function Slide03Results({ metricas }: { metricas: any[] }) {
 }
 
 /* 7. SLIDE 04 - PORTFÓLIO */
-function Slide04Portfolio({ projectos }: { projectos: any[] }) {
+function Slide04Portfolio({ projectos, slideConfig }: { projectos: any[], slideConfig?: any }) {
+  const titleText = slideConfig?.titulo || 'PROJETOS';
+  const eyebrowText = slideConfig?.eyebrow || 'Trabalhos';
   return (
-    <SlideWrapper eyebrow="Trabalhos" title="PROJETOS">
+    <SlideWrapper eyebrow={eyebrowText} title={titleText}>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 bg-black/5 border border-black/5 flex-1">
         {projectos.slice(0, 4).map((p, idx) => (
           <div 
@@ -573,15 +589,21 @@ function Slide04Portfolio({ projectos }: { projectos: any[] }) {
 }
 
 /* 8. SLIDE 05 - CLIENTES E SECTORES */
-function Slide05Markets({ sectores, paises }: { sectores: any[], paises: any[] }) {
+function Slide05Markets({ sectores, paises, slideConfig }: { sectores: any[], paises: any[], slideConfig?: any }) {
   const displaySectores = sectores.length > 0 ? sectores : [{ id: '1', nome: 'Sectores em Breve' }];
   const displayPaises = paises.length > 0 ? paises : [
     { id: '1', nome: 'Angola', bandeira: '🇦🇴', descricao: 'Mercado Principal' },
     { id: '2', nome: 'Portugal', bandeira: '🇵🇹', descricao: 'Presença Internacional' }
   ];
+  const titleText = slideConfig?.titulo || 'CLIENTES E SECTORES';
+  const eyebrowText = slideConfig?.eyebrow || 'Global';
+  const titleParts = titleText.split(' ');
+  const halfIdx = Math.ceil(titleParts.length / 2);
+  const titleLine1 = titleParts.slice(0, halfIdx).join(' ');
+  const titleLine2 = titleParts.slice(halfIdx).join(' ');
 
   return (
-    <SlideWrapper eyebrow="Global" title={<>CLIENTES E <br /> SECTORES</>}>
+    <SlideWrapper eyebrow={eyebrowText} title={<>{titleLine1}<br />{titleLine2}</>}>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-20 flex-1">
         <div className="lg:col-span-6">
           <div className="flex items-center gap-2 lg:gap-4 mb-4 lg:mb-8">
@@ -622,14 +644,16 @@ function Slide05Markets({ sectores, paises }: { sectores: any[], paises: any[] }
 }
 
 /* 9. SLIDE 06 - DEPOIMENTOS */
-function Slide06Testimonials({ depoimentos }: { depoimentos: any[] }) {
+function Slide06Testimonials({ depoimentos, slideConfig }: { depoimentos: any[], slideConfig?: any }) {
   const displayDepoimentos = depoimentos.length > 0 ? depoimentos : [
     { id: 1, autor: 'Cliente Alpha', cargo: 'CEO', organizacao: 'Empresa X', texto: 'Experiência incrível e profissionalismo de alto nível.', iniciais: 'CA' },
     { id: 2, autor: 'Cliente Beta', cargo: 'Fundador', organizacao: 'Startup Y', texto: 'A identidade visual criada mudou o nosso negócio.', iniciais: 'CB' }
   ];
+  const titleText = slideConfig?.titulo || 'TESTEMUNHOS';
+  const eyebrowText = slideConfig?.eyebrow || 'Confiança';
 
   return (
-    <SlideWrapper eyebrow="Confiança" title="TESTEMUNHOS" isDark>
+    <SlideWrapper eyebrow={eyebrowText} title={titleText} isDark>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-4 flex-1">
         {displayDepoimentos.map(d => (
           <div key={d.id} className="bg-white/5 border border-white/10 p-6 lg:p-12 relative text-white flex flex-col justify-between group hover:bg-white/10 transition-all">
@@ -654,15 +678,17 @@ function Slide06Testimonials({ depoimentos }: { depoimentos: any[] }) {
 }
 
 /* 10. SLIDE 07 - FERRAMENTAS */
-function Slide07Tools({ ferramentas, config }: { ferramentas: any[], config: any }) {
+function Slide07Tools({ ferramentas, config, slideConfig }: { ferramentas: any[], config: any, slideConfig?: any }) {
   const adobeSuite = ferramentas.filter(f => f.grupo === 'adobe');
   const outrasPlataformas = ferramentas.filter(f => f.grupo === 'outras');
 
   const displayAdobe = adobeSuite.length > 0 ? adobeSuite : [{ id: 1, nome: 'Adobe Suite' }];
   const displayOutras = outrasPlataformas.length > 0 ? outrasPlataformas : [{ id: 1, nome: 'Outras Ferramentas' }];
+  const titleText = slideConfig?.titulo || 'FERRAMENTAS';
+  const eyebrowText = slideConfig?.eyebrow || 'Toolkit';
 
   return (
-    <SlideWrapper eyebrow="Toolkit" title="FERRAMENTAS">
+    <SlideWrapper eyebrow={eyebrowText} title={titleText}>
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-20 flex-1">
           <div>
               <div className="flex items-center gap-4 mb-6 lg:mb-10">
@@ -705,16 +731,18 @@ function Slide07Tools({ ferramentas, config }: { ferramentas: any[], config: any
 }
 
 /* 12. SLIDE 09 - PARCEIROS */
-function Slide09Partners({ parceiros }: { parceiros: any[] }) {
+function Slide09Partners({ parceiros, slideConfig }: { parceiros: any[], slideConfig?: any }) {
   const displayParceiros = parceiros.length > 0 ? parceiros : [
     { id: 1, nome: 'Empresa A', logo: 'https://via.placeholder.com/150' },
     { id: 2, nome: 'Empresa B', logo: 'https://via.placeholder.com/150' },
     { id: 3, nome: 'Empresa C', logo: 'https://via.placeholder.com/150' },
     { id: 4, nome: 'Empresa D', logo: 'https://via.placeholder.com/150' }
   ];
+  const titleText = slideConfig?.titulo || 'PARCEIROS';
+  const eyebrowText = slideConfig?.eyebrow || 'Parcerias';
 
   return (
-    <SlideWrapper eyebrow="Network" title="PARCEIROS">
+    <SlideWrapper eyebrow={eyebrowText} title={titleText}>
       <div className="flex-1 flex flex-col justify-center">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8">
            {displayParceiros.map(p => (
@@ -745,14 +773,21 @@ function Slide09Partners({ parceiros }: { parceiros: any[] }) {
 function Slide08Contact({ 
   contactos, 
   config, 
-  perfil
+  perfil,
+  slideConfig
 }: { 
   contactos: any[]; 
   config: any; 
-  perfil: any
+  perfil: any;
+  slideConfig?: any
 }) {
+  const titleText = slideConfig?.titulo || 'CONECTAR E CRIAR';
+  const eyebrowText = slideConfig?.eyebrow || config.etiquetaRodapeContacto || 'Vamos Conversar';
+  const titleParts = titleText.split(' ');
+  const halfIdx = Math.ceil(titleParts.length / 2);
+
   return (
-    <SlideWrapper eyebrow={config.etiquetaRodapeContacto || 'Vamos Conversar'} title={<>CONECTAR E <br /> CRIAR</>} isOrange>
+    <SlideWrapper eyebrow={eyebrowText} title={<>{titleParts.slice(0, halfIdx).join(' ')} <br /> {titleParts.slice(halfIdx).join(' ')}</>} isOrange>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-16 flex-1 items-end">
         <div className="lg:col-span-7 space-y-1 lg:space-y-2">
           {contactos.map(c => (

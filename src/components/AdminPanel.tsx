@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { auth, db, login, logout, subscribeToCollection } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, updateDoc, collection, addDoc, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, collection, addDoc, deleteDoc, getDoc, getDocs, writeBatch } from 'firebase/firestore';
 import Papa from 'papaparse';
 import * as mammoth from 'mammoth';
 import html2canvas from 'html2canvas';
@@ -75,6 +75,8 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   const menuItems = [
+    { id: 'slides', label: 'Slides', icon: LayoutDashboard, category: 'Menu' },
+    { id: 'quemSou', label: 'Quem Sou Eu', icon: User, category: 'Menu' },
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, category: 'Menu' },
     { id: 'perfil', label: 'Perfil', icon: User, category: 'Menu' },
     { id: 'servicos', label: 'Serviços', icon: Briefcase, category: 'Menu' },
@@ -245,6 +247,8 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
                   transition={{ duration: 0.15 }}
                 >
                   {activeTab === 'dashboard' && <DashboardOverview counts={itemsCount} setTab={setActiveTab} />}
+                  {activeTab === 'slides' && <EditorSlides />}
+                  {activeTab === 'quemSou' && <EditorQuemSou />}
                   {activeTab === 'perfil' && <EditorPerfil />}
                   {activeTab === 'servicos' && <CollectionManager colName="servicos" title="Serviços" />}
                   {activeTab === 'projectos' && <CollectionManager colName="projectos" title="Projectos" />}
@@ -303,6 +307,197 @@ const compressImage = (file: File, maxWidth = 1200): Promise<string> => {
     };
   });
 };
+
+const defaultSlides = [
+  { id: 'slide-01', titulo: 'QUEM SOU', eyebrow: 'Quem Sou' },
+  { id: 'slide-02', titulo: 'O QUE FAÇO', eyebrow: 'Expertise' },
+  { id: 'slide-03', titulo: 'NÚMEROS QUE FALAM', eyebrow: 'Performance' },
+  { id: 'slide-04', titulo: 'PROJETOS', eyebrow: 'Trabalhos' },
+  { id: 'slide-05', titulo: 'CLIENTES E SECTORES', eyebrow: 'Global' },
+  { id: 'slide-06', titulo: 'PARCEIROS', eyebrow: 'Parcerias' },
+  { id: 'slide-07', titulo: 'TESTEMUNHOS', eyebrow: 'Depoimentos' },
+  { id: 'slide-08', titulo: 'FERRAMENTAS', eyebrow: 'Tecnologias' },
+  { id: 'slide-09', titulo: 'CONTACTOS', eyebrow: 'Fale Comigo' },
+];
+
+function EditorSlides() {
+  const [slides, setSlides] = useState<any[]>(defaultSlides);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const loadSlides = async () => {
+      const snap = await getDocs(collection(db, 'slides'));
+      if (snap.docs.length > 0) {
+        setSlides(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      }
+    };
+    loadSlides();
+  }, []);
+
+  const updateSlide = async (id: string, field: string, value: string) => {
+    const updated = slides.map(s => s.id === id ? { ...s, [field]: value } : s);
+    setSlides(updated);
+    await setDoc(doc(db, 'slides', id), { [field]: value, updatedAt: new Date().toISOString() }, { merge: true });
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between bg-zinc-50 p-5 rounded-xl">
+        <div>
+          <h3 className="text-lg font-display font-bold uppercase tracking-tight leading-none">Títulos dos Slides</h3>
+          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1.5">Personalize o título e eyebrow de cada slide</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4">
+        {slides.map((slide, idx) => (
+          <div key={slide.id} className="p-6 bg-white border border-zinc-100 rounded-2xl flex flex-col gap-4 hover:border-brand-orange/20 transition-all shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-brand-orange/10 rounded-lg flex items-center justify-center font-mono text-[9px] font-bold text-brand-orange">
+                {String(idx + 1).padStart(2, '0')}
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{slide.id}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-[8px] font-bold uppercase tracking-[0.1em] text-zinc-400">Título</label>
+                <input 
+                  type="text" 
+                  value={slide.titulo} 
+                  onChange={e => updateSlide(slide.id, 'titulo', e.target.value)}
+                  className="w-full bg-zinc-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-1 focus:ring-brand-orange transition-all"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-[8px] font-bold uppercase tracking-[0.1em] text-zinc-400">Eyebrow</label>
+                <input 
+                  type="text" 
+                  value={slide.eyebrow} 
+                  onChange={e => updateSlide(slide.id, 'eyebrow', e.target.value)}
+                  className="w-full bg-zinc-50 rounded-lg p-2.5 text-sm font-bold outline-none focus:ring-1 focus:ring-brand-orange transition-all"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EditorQuemSou() {
+  const [data, setData] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getDoc(doc(db, 'quemsou', 'principal')).then(s => {
+      if (s.exists()) setData(s.data());
+      else setData({ 
+        nomePrimeiraLinha: 'Adilson',
+        nomeDestaque: 'Pinto',
+        biografia: 'Designer com mais de 5 anos de experiência especializado em identidade visual e comunicação criativa. Apaixonado por transformar conceitos em marcas poderosas.',
+        fotografia: '',
+        tags: ['IDENTIDADE VISUAL', 'BRANDING', 'DESIGN']
+      });
+    });
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    await setDoc(doc(db, 'quemsou', 'principal'), data);
+    setSaving(false);
+  };
+
+  const updateTag = (index: number, value: string) => {
+    const newTags = [...(data.tags || [])];
+    newTags[index] = value;
+    setData({...data, tags: newTags});
+  };
+
+  const addTag = () => {
+    setData({...data, tags: [...(data.tags || []), 'NOVA TAG']});
+  };
+
+  const removeTag = (index: number) => {
+    const newTags = (data.tags || []).filter((_: any, i: number) => i !== index);
+    setData({...data, tags: newTags});
+  };
+
+  if (!data) return <div className="space-y-6 animate-pulse"><div className="h-32 bg-zinc-100 rounded-xl" /><div className="h-32 bg-zinc-100 rounded-xl" /></div>;
+
+  return (
+    <div className="space-y-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Nome (Primeira Linha)</label>
+          <input type="text" value={data.nomePrimeiraLinha} onChange={e => setData({...data, nomePrimeiraLinha: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
+        </div>
+        <div className="space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Nome em Destaque (Laranja)</label>
+          <input type="text" value={data.nomeDestaque} onChange={e => setData({...data, nomeDestaque: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none transition-all font-bold text-sm" />
+        </div>
+        <div className="md:col-span-2 space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Biografia</label>
+          <textarea value={data.biografia} onChange={e => setData({...data, biografia: e.target.value})} className="w-full bg-zinc-50 rounded-xl p-3.5 focus:ring-1 focus:ring-brand-orange outline-none h-32 transition-all font-medium leading-relaxed text-sm" />
+        </div>
+        <div className="space-y-3">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Fotografia do Perfil</label>
+          <div className="flex items-center gap-4">
+            {data.fotografia && (
+              <div className="w-16 h-16 rounded-xl overflow-hidden grayscale border border-zinc-100">
+                <img src={data.fotografia} className="w-full h-full object-cover" />
+              </div>
+            )}
+            <label className="flex-1 bg-zinc-100 p-4 rounded-xl border border-dashed border-zinc-300 hover:bg-zinc-200 transition-all cursor-pointer flex flex-col items-center justify-center">
+              <Upload className="h-4 w-4 text-zinc-400 mb-1" />
+              <span className="text-[9px] font-bold uppercase text-zinc-500">Alterar Foto</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={async (e) => {
+                   const file = e.target.files?.[0];
+                   if (file) {
+                     const base64 = await compressImage(file, 800);
+                     setData({...data, fotografia: base64});
+                   }
+                }}
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="block text-[9px] font-bold uppercase tracking-widest text-zinc-400">Tags de Competências</label>
+          <button onClick={addTag} className="text-[9px] font-bold text-brand-orange hover:text-brand-dark transition-all">+ Adicionar Tag</button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(data.tags || []).map((tag: string, index: number) => (
+            <div key={index} className="flex items-center gap-2 bg-brand-orange/10 border border-brand-orange/20 rounded-full px-4 py-2">
+              <input 
+                type="text" 
+                value={tag} 
+                onChange={e => updateTag(index, e.target.value)}
+                className="bg-transparent text-[10px] font-bold uppercase tracking-widest outline-none w-32"
+              />
+              <button onClick={() => removeTag(index)} className="text-zinc-400 hover:text-red-500 transition-all">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+      <button 
+        onClick={save} 
+        disabled={saving}
+        className="flex items-center justify-center gap-3 bg-brand-orange text-white px-8 py-4 font-bold uppercase tracking-widest hover:bg-brand-dark transition-all disabled:opacity-50 rounded-xl shadow-lg shadow-brand-orange/10"
+      >
+        {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+        <span className="text-[11px]">Guardar Quem Sou</span>
+      </button>
+    </div>
+  );
+}
 
 function ImportExportManager({ showStatus, onClose }: { showStatus: (m: string) => void, onClose: () => void }) {
   const [exporting, setExporting] = useState(false);
@@ -431,11 +626,30 @@ INSTRUÇÕES:
         ],
         parceiros: [
           { id: '1', nome: 'KERO', logo: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&auto=format&fit=crop', link: 'https://kero.com.ao', ordem: 1, ativo: true }
+        ],
+        slides: [
+          { id: 'slide-01', titulo: 'QUEM SOU', eyebrow: 'Quem Sou' },
+          { id: 'slide-02', titulo: 'O QUE FAÇO', eyebrow: 'Expertise' },
+          { id: 'slide-03', titulo: 'NÚMEROS QUE FALAM', eyebrow: 'Performance' },
+          { id: 'slide-04', titulo: 'PROJETOS', eyebrow: 'Trabalhos' },
+          { id: 'slide-05', titulo: 'CLIENTES E SECTORES', eyebrow: 'Global' },
+          { id: 'slide-06', titulo: 'PARCEIROS', eyebrow: 'Parcerias' },
+          { id: 'slide-07', titulo: 'TESTEMUNHOS', eyebrow: 'Confiança' },
+          { id: 'slide-08', titulo: 'FERRAMENTAS', eyebrow: 'Toolkit' },
+          { id: 'slide-09', titulo: 'CONTACTOS', eyebrow: 'Vamos Conversar' }
         ]
       };
 
       batch.set(doc(db, 'perfil', 'principal'), { ...PERFIL_DATA, updatedAt: new Date().toISOString() });
       batch.set(doc(db, 'configuracoes', 'global'), { ...CONFIG_GLOBALS, updatedAt: new Date().toISOString() });
+      batch.set(doc(db, 'quemsou', 'principal'), { 
+        nomePrimeiraLinha: 'Adilson',
+        nomeDestaque: 'Pinto',
+        biografia: 'Designer com mais de 5 anos de experiência especializado em identidade visual e comunicação criativa. Apaixonado por transformar conceitos em marcas poderosas.',
+        fotografia: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop',
+        tags: ['IDENTIDADE VISUAL', 'BRANDING', 'DESIGN'],
+        updatedAt: new Date().toISOString()
+      });
 
       for (const [col, data] of Object.entries(listMappings)) {
         if (Array.isArray(data)) {

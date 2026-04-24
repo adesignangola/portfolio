@@ -130,6 +130,27 @@
         "ordem": { "type": "number" }
       }
     },
+    "quemsou": {
+      "title": "Quem Sou (Slide 01)",
+      "description": "Dados do slide Quem Sou Eu (separado do perfil da Home).",
+      "type": "object",
+      "properties": {
+        "nomePrimeiraLinha": { "type": "string" },
+        "nomeDestaque": { "type": "string" },
+        "biografia": { "type": "string" },
+        "fotografia": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "slide": {
+      "title": "Slide",
+      "description": "Configuração de título e eyebrow de cada slide.",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "eyebrow": { "type": "string" }
+      }
+    },
     "configuracao": {
       "title": "Configuração Global",
       "description": "Textos globais e configurações de sistema.",
@@ -153,6 +174,8 @@
     "paises/{paisId}": { "schema": "pais", "description": "Lista de países de atuação" },
     "ferramentas/{ferramentaId}": { "schema": "ferramenta", "description": "Lista de ferramentas de trabalho" },
     "parceiros/{parceiroId}": { "schema": "parceiro", "description": "Lista de logos de parceiros/clientes" },
-    "configuracoes/global": { "schema": "configuracao", "description": "Configurações globais" }
+    "configuracoes/global": { "schema": "configuracao", "description": "Configurações globais" },
+    "quemsou/principal": { "schema": "quemsou", "description": "Dados do slide Quem Sou Eu" },
+    "slides/{slideId}": { "schema": "slide", "description": "Títulos e eyebrows dos slides" }
   }
 }
