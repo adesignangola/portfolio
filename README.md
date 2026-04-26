@@ -1,20 +1,24 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Portfolio
 
-# Run and deploy your AI Studio app
+## Executar localmente
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/e2125916-904e-4cbc-8c68-d45fc00f89c5
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
+1. Instale as dependencias:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Crie um `.env` com:
+   `VITE_SUPABASE_URL`
+   `VITE_SUPABASE_PUBLISHABLE_KEY` ou `VITE_SUPABASE_ANON_KEY`
+3. Inicie o projeto:
    `npm run dev`
+
+## Buscar a chave correta do Supabase
+
+O frontend deve usar uma chave publica (`publishable`) ou a `anon` legada. Nao use `service_role` no navegador.
+
+1. Gere um `SUPABASE_ACCESS_TOKEN` na sua conta do Supabase.
+2. Rode:
+   `npm run supabase:key -- --project-ref xahrwrfttaazplqarcha --type publishable --env`
+3. Cole a linha retornada no seu `.env`.
+
+Se o seu projeto ainda usa a chave legada:
+
+`npm run supabase:key -- --project-ref xahrwrfttaazplqarcha --type anon --env`

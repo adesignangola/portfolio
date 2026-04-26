@@ -40,13 +40,13 @@ try {
     if ($pgResponse.uri) {
         Write-Host "PostgreSQL URI obtained: $($pgResponse.uri.Substring(0, 50))..." -ForegroundColor Green
         Write-Host ""
-        Write-Host "=== MANUAL SQL EXECUTION REQUIRED ===" -ForegroundColor Red
-        Write-Host "Run this SQL in Supabase Dashboard SQL Editor:" -ForegroundColor Yellow
+        Write-Host "=== EXECUÇÃO MANUAL SQL REQUERIDA ===" -ForegroundColor Red
+        Write-Host "Execute este SQL no Editor SQL do Supabase Dashboard:" -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "1. Go to: https://supabase.com/dashboard" -ForegroundColor White
-        Write-Host "2. Select project: portfolio ($PROJECT_REF)" -ForegroundColor White
-        Write-Host "3. Go to SQL Editor" -ForegroundColor White
-        Write-Host "4. Copy contents from supabase-schema.sql" -ForegroundColor White
+        Write-Host "1. Vá para: https://supabase.com/dashboard" -ForegroundColor White
+        Write-Host "2. Selecione projeto: portfolio ($PROJECT_REF)" -ForegroundColor White
+        Write-Host "3. Vá para SQL Editor" -ForegroundColor White
+        Write-Host "4. Copie conteúdo de supabase-schema.sql" -ForegroundColor White
         Write-Host "5. Execute" -ForegroundColor White
     }
 }

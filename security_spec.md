@@ -1,26 +1,26 @@
-# Security Specification for Adilson Portfolio CMS
+# Especificação de Segurança para CMS do Portfólio Adilson
 
-## 1. Data Invariants
-- Only authenticated admins can write to any collection.
-- Readers don't need authentication to view the portfolio data (public read).
-- `perfil/principal` and `configuracoes/global` are single-document collections (singleton).
-- IDs must be alphanumeric and safe.
-- Timestamps must be server-generated on creation/update.
+## 1. Invariantes de Dados
+- Apenas administradores autenticados podem escrever em qualquer coleção.
+- Leitores não precisam de autenticação para visualizar os dados do portfólio (leitura pública).
+- `perfil/principal` e `configuracoes/global` são coleções de documento único (singleton).
+- IDs devem ser alfanuméricos e seguros.
+- Timestamps devem ser gerados pelo servidor na criação/atualização.
 
-## 2. The Dirty Dozen Payloads
-1. Attempting to update `perfil/principal` without being logged in.
-2. Attempting to create a project with a 2MB metadata string.
-3. Attempting to delete a service as a guest.
-4. Attempting to spoof `ownerId` (not applicable here as only admins write, but we will block all non-admins).
-5. Attempting to change `isAdmin` flag in a user document (we don't have user docs, we use a dedicated `admins` collection).
-6. Attempting to inject script tags into `tagline`.
-7. Attempting to bypass `ordem` validation by sending a string instead of a number.
-8. Attempting to write to a collection not defined in the blueprint (e.g., `hack_collection`).
-9. Attempting to set an extremely high `ordem` to overflow.
-10. Attempting to update an immutable field (if any were defined, like `id`).
-11. Attempting to read PII from a private collection (not applicable here, all data is public for display).
-12. Attempting to list all users (we will block read access to any user list).
+## 2. Os Doze Payloads Sujos
+1. Tentativa de atualizar `perfil/principal` sem estar logado.
+2. Tentativa de criar um projeto com string de metadados de 2MB.
+3. Tentativa de excluir um serviço como convidado.
+4. Tentativa de falsificar `ownerId` (não aplicável aqui, pois apenas administradores escrevem, mas bloquearemos todos os não-administradores).
+5. Tentativa de alterar flag `isAdmin` em documento de usuário (não temos documentos de usuário, usamos coleção dedicada `admins`).
+6. Tentativa de injetar tags de script em `tagline`.
+7. Tentativa de contornar validação `ordem` enviando string em vez de número.
+8. Tentativa de escrever em coleção não definida no blueprint (ex: `hack_collection`).
+9. Tentativa de definir `ordem` extremamente alta para overflow.
+10. Tentativa de atualizar campo imutável (se houver algum definido, como `id`).
+11. Tentativa de ler PII de coleção privada (não aplicável aqui, todos os dados são públicos para exibição).
+12. Tentativa de listar todos os usuários (bloquearemos acesso de leitura a qualquer lista de usuários).
 
 ## 3. Test Runner (Mock)
-A real test runner `firestore.rules.test.ts` would verify these.
-For now, I will proceed to generate the hardened rules.
+Um test runner real `firestore.rules.test.ts` verificaria estes.
+Por agora, vou prosseguir para gerar as regras endurecidas.

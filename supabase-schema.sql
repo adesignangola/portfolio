@@ -1,13 +1,13 @@
 -- ============================================
--- PORTFOLIO CMS - SUPABASE DATABASE SCHEMA
--- Run this in Supabase SQL Editor
+-- CMS PORTFÓLIO - ESQUEMA DE BASE DE DADOS SUPABASE
+-- Execute isto no Editor SQL Supabase
 -- ============================================
 
--- Enable UUID extension
+-- Habilitar extensão UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
--- TABLE: perfil
+-- TABELA: perfil
 -- ============================================
 CREATE TABLE IF NOT EXISTS perfil (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS perfil (
 );
 
 -- ============================================
--- TABLE: quemsou
+-- TABELA: quemsou
 -- ============================================
 CREATE TABLE IF NOT EXISTS quemsou (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS quemsou (
 );
 
 -- ============================================
--- TABLE: slides
+-- TABELA: slides
 -- ============================================
 CREATE TABLE IF NOT EXISTS slides (
   id TEXT PRIMARY KEY,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS slides (
 );
 
 -- ============================================
--- TABLE: servicos
+-- TABELA: servicos
 -- ============================================
 CREATE TABLE IF NOT EXISTS servicos (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS servicos (
 );
 
 -- ============================================
--- TABLE: projectos
+-- TABELA: projectos
 -- ============================================
 CREATE TABLE IF NOT EXISTS projectos (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS projectos (
   categoria TEXT DEFAULT 'Design',
   nomeCliente TEXT,
   ano TEXT DEFAULT '2025',
-  imagemDestaque TEXT,
+  imagemDestaque TEXT[] DEFAULT ARRAY[]::TEXT[],
   emDestaque BOOLEAN DEFAULT false,
   ordem INTEGER DEFAULT 1,
   ativo BOOLEAN DEFAULT true,
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS projectos (
 );
 
 -- ============================================
--- TABLE: metricas
+-- TABELA: metricas
 -- ============================================
 CREATE TABLE IF NOT EXISTS metricas (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS metricas (
 );
 
 -- ============================================
--- TABLE: depoimentos
+-- TABELA: depoimentos
 -- ============================================
 CREATE TABLE IF NOT EXISTS depoimentos (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS depoimentos (
 );
 
 -- ============================================
--- TABLE: contactos
+-- TABELA: contactos
 -- ============================================
 CREATE TABLE IF NOT EXISTS contactos (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS contactos (
 );
 
 -- ============================================
--- TABLE: configuracoes
+-- TABELA: configuracoes
 -- ============================================
 CREATE TABLE IF NOT EXISTS configuracoes (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS configuracoes (
 );
 
 -- ============================================
--- TABLE: sectores
+-- TABELA: sectores
 -- ============================================
 CREATE TABLE IF NOT EXISTS sectores (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS sectores (
 );
 
 -- ============================================
--- TABLE: paises
+-- TABELA: paises
 -- ============================================
 CREATE TABLE IF NOT EXISTS paises (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS paises (
 );
 
 -- ============================================
--- TABLE: ferramentas
+-- TABELA: ferramentas
 -- ============================================
 CREATE TABLE IF NOT EXISTS ferramentas (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS ferramentas (
 );
 
 -- ============================================
--- TABLE: parceiros
+-- TABELA: parceiros
 -- ============================================
 CREATE TABLE IF NOT EXISTS parceiros (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS parceiros (
 );
 
 -- ============================================
--- ROW LEVEL SECURITY (RLS)
+-- SEGURANÇA DE NÍVEL DE LINHA (RLS)
 -- ============================================
 
 ALTER TABLE perfil ENABLE ROW LEVEL SECURITY;
@@ -210,7 +210,7 @@ ALTER TABLE paises ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ferramentas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parceiros ENABLE ROW LEVEL SECURITY;
 
--- Public read access for all tables
+-- Acesso de leitura público para todas as tabelas
 CREATE POLICY "Public read access" ON perfil FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON quemsou FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON slides FOR SELECT USING (true);
@@ -225,7 +225,7 @@ CREATE POLICY "Public read access" ON paises FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON ferramentas FOR SELECT USING (true);
 CREATE POLICY "Public read access" ON parceiros FOR SELECT USING (true);
 
--- Public write access (for CMS - PIN validation done client-side)
+-- Acesso de escrita público (para CMS - validação PIN feita no lado do cliente)
 CREATE POLICY "Public insert" ON perfil FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public update" ON perfil FOR UPDATE USING (true);
 CREATE POLICY "Public insert" ON quemsou FOR INSERT WITH CHECK (true);
@@ -263,7 +263,7 @@ CREATE POLICY "Public update" ON parceiros FOR UPDATE USING (true);
 CREATE POLICY "Public delete" ON parceiros FOR DELETE USING (true);
 
 -- ============================================
--- SEED DATA - Default Slides
+-- DADOS INICIAIS - Slides Padrão
 -- ============================================
 INSERT INTO slides (id, titulo, eyebrow) VALUES
   ('slide-01', 'QUEM SOU', 'Quem Sou'),
@@ -278,7 +278,7 @@ INSERT INTO slides (id, titulo, eyebrow) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================
--- SEED DATA - Sample Profile
+-- DADOS INICIAIS - Perfil Amostra
 -- ============================================
 INSERT INTO perfil (fotografia, nomeCompleto, destaqueNome, eyebrowEntrada, tagline, biografia, labelBotaoInicio, labelBotaoAcaoFinal, anoPortfolio)
 VALUES (
@@ -294,7 +294,7 @@ VALUES (
 );
 
 -- ============================================
--- SEED DATA - Sample QuemSou
+-- DADOS INICIAIS - Amostra QuemSou
 -- ============================================
 INSERT INTO quemsou (nomePrimeiraLinha, nomeDestaque, biografia, fotografia, tags)
 VALUES (
@@ -306,20 +306,20 @@ VALUES (
 );
 
 -- ============================================
--- SEED DATA - Sample Services
+-- DADOS INICIAIS - Amostra Serviços
 -- ============================================
 INSERT INTO servicos (titulo, descricao, corFundo, ordem) VALUES
   ('IDENTIDADE VISUAL', 'Criação de logos, paletas de cor, tipografia e manual de marca.', 'azul-escuro', 1),
   ('DESIGN GRÁFICO', 'Artes para redes sociais, cartazes, flyers e materiais.', 'laranja', 2);
 
 -- ============================================
--- SEED DATA - Sample Projects
+-- DADOS INICIAIS - Amostra Projetos
 -- ============================================
 INSERT INTO projectos (titulo, categoria, nomeCliente, ano, imagemDestaque, emDestaque, ordem) VALUES
-  ('IDENTIDADE KERO', 'BRANDING', 'KERO', '2024', 'https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=800', true, 1);
+  ('IDENTIDADE KERO', 'BRANDING', 'KERO', '2024', ARRAY['https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=800'], true, 1);
 
 -- ============================================
--- SEED DATA - Sample Metrics
+-- DADOS INICIAIS - Amostra Métricas
 -- ============================================
 INSERT INTO metricas (valor, sufixo, legenda, ordem) VALUES
   ('5', '+', 'Anos de Experiência', 1),
@@ -328,20 +328,20 @@ INSERT INTO metricas (valor, sufixo, legenda, ordem) VALUES
   ('100', '%', 'Satisfação Total', 4);
 
 -- ============================================
--- SEED DATA - Sample Testimonials
+-- DADOS INICIAIS - Amostra Depoimentos
 -- ============================================
 INSERT INTO depoimentos (texto, autor, cargo, organizacao, iniciais, emDestaque, ordem) VALUES
   ('O Adilson conseguiu captar exatamente a essência da nossa marca.', 'Helena Santos', 'Diretora de Marketing', 'Kero', 'HS', true, 1);
 
 -- ============================================
--- SEED DATA - Sample Contacts
+-- DADOS INICIAIS - Amostra Contactos
 -- ============================================
 INSERT INTO contactos (tipo, etiqueta, valor, link, ordem) VALUES
   ('email', 'Email', 'contato@adesign.ao', 'mailto:contato@adesign.ao', 1),
   ('whatsapp', 'WhatsApp', '+244 900 000 000', 'https://wa.me/244900000000', 2);
 
 -- ============================================
--- SEED DATA - Sample Config
+-- DADOS INICIAIS - Amostra Config
 -- ============================================
 INSERT INTO configuracoes (nomeAgencia, servicosRodape, processoTrabalho, etiquetaRodapeContacto)
 VALUES (
@@ -352,7 +352,7 @@ VALUES (
 );
 
 -- ============================================
--- SEED DATA - Sample Sectors
+-- DADOS INICIAIS - Amostra Sectores
 -- ============================================
 INSERT INTO sectores (nome, ordem) VALUES
   ('Retalho', 1),
@@ -360,14 +360,14 @@ INSERT INTO sectores (nome, ordem) VALUES
   ('Telecomunicações', 3);
 
 -- ============================================
--- SEED DATA - Sample Countries
+-- DADOS INICIAIS - Amostra Países
 -- ============================================
 INSERT INTO paises (nome, bandeira, descricao, ordem) VALUES
   ('Angola', '🇦🇴', 'Mercado Principal', 1),
   ('Portugal', '🇵🇹', 'Presença Internacional', 2);
 
 -- ============================================
--- SEED DATA - Sample Tools
+-- DADOS INICIAIS - Amostra Ferramentas
 -- ============================================
 INSERT INTO ferramentas (nome, grupo, ordem) VALUES
   ('Adobe Illustrator', 'adobe', 1),
@@ -375,7 +375,7 @@ INSERT INTO ferramentas (nome, grupo, ordem) VALUES
   ('Figma', 'outras', 3);
 
 -- ============================================
--- SEED DATA - Sample Partners
+-- DADOS INICIAIS - Amostra Parceiros
 -- ============================================
 INSERT INTO parceiros (nome, logo, link, ordem) VALUES
   ('KERO', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&auto=format&fit=crop', 'https://kero.com.ao', 1);

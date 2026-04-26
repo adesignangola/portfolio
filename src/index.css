@@ -1,12 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&family=Aktura:wght@400;700&family=Barett+Street:wght@400;700&family=Ghitalk:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
+  --font-aktura: "Aktura", sans-serif;
+  --font-barett: "Barett Street", sans-serif;
+  --font-ghitalk: "Ghitalk", sans-serif;
 
-  /* Skeleton Official Colors */
-  --color-brand-orange: #FE5516;
+    --color-brand-orange: #FE5516;
   --color-brand-dark: #0D1520;
   --color-brand-cream: #F5F5DC;
 }

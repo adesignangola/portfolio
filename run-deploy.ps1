@@ -10,11 +10,11 @@ $body = @{
     query = $sql
 } | ConvertTo-Json -Depth 10
 
-Write-Host "Deploying SQL to Supabase..." -ForegroundColor Cyan
+Write-Host "Implantando SQL no Supabase..." -ForegroundColor Cyan
 
 try {
     $response = Invoke-RestMethod -Uri "https://api.supabase.com/v1/projects/xahrwrfttaazplqarcha/database/query" -Method POST -Headers $headers -Body $body -ContentType "application/json"
-    Write-Host "SUCCESS! Tables created!" -ForegroundColor Green
+    Write-Host "SUCESSO! Tabelas criadas!" -ForegroundColor Green
     $response | ConvertTo-Json -Depth 5
 } catch {
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
