@@ -1274,18 +1274,20 @@ function Slide09Partners({ parceiros, slideConfig }: { parceiros: any[], slideCo
            {displayParceiros.map(p => (
              <motion.div 
                key={p.id}
-               whileHover={{ y: -5 }}
-               className="bg-zinc-50 border border-zinc-100 p-8 lg:p-12 flex items-center justify-center grayscale hover:grayscale-0 transition-all group"
+               whileHover={{ scale: 1.04 }}
+               transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+               className="bg-zinc-50 border border-zinc-100 p-8 lg:p-12 flex items-center justify-center transition-transform group"
              >
                 {p.logo ? (
                   <img 
                     src={p.logo} 
                     alt={p.nome} 
-                    className="max-h-12 lg:max-h-20 w-auto opacity-40 group-hover:opacity-100 transition-opacity" 
+                    className="max-h-12 lg:max-h-20 w-auto transition-transform"
+                    style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(0%) saturate(0%) hue-rotate(179deg) brightness(96%) contrast(86%)' }}
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <span className="font-bold text-zinc-300 uppercase tracking-widest text-[10px]">{p.nome}</span>
+                  <span className="font-bold text-[#282828] uppercase tracking-widest text-[10px]">{p.nome}</span>
                 )}
              </motion.div>
            ))}
