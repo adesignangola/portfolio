@@ -16,6 +16,7 @@ import {
   Download,
   Flag,
   Globe,
+  ImageOff,
   ImagePlus,
   Layers,
   LayoutDashboard,
@@ -2105,8 +2106,13 @@ function CollectionStudio({
 
   useEffect(() => {
     const loadItems = async () => {
-      const { data } = await supabase.from(colName).select('*').order('ordem');
-      setItems(sortCollectionItems(normalizeTableRows(colName, data)));
+      const { data, error } = await supabase.from(colName).select('*').order('ordem');
+      if (error) {
+        console.error(`Erro ao carregar ${colName}:`, error);
+        return;
+      }
+      const validItems = normalizeTableRows(colName, data).filter((item: Record<string, unknown>) => item && item.id);
+      setItems(sortCollectionItems(validItems));
     };
     void loadItems();
   }, [colName]);
@@ -2123,6 +2129,24 @@ function CollectionStudio({
     setIsCreateModalOpen(false);
     setDraftItem(createCollectionDraft(defaultItem, items));
   };
+
+  useEffect(() => {
+    if (!isCreateModalOpen && !selectedItemId) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCreateModalOpen) {
+          e.preventDefault();
+          closeCreateModal();
+        }
+        if (selectedItemId) {
+          e.preventDefault();
+          closeDetailsModal();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isCreateModalOpen, selectedItemId, items]);
 
   const openDetailsModal = (item: Record<string, any>) => {
     setSelectedItemId(item.id);
@@ -2256,6 +2280,7 @@ function CollectionStudio({
               ))}
             </div>
 
+{selectedItemId && (
             <ModalShell
               onClose={closeDetailsModal}
               title={
@@ -2364,6 +2389,7 @@ function CollectionStudio({
                 </form>
               ) : null}
             </ModalShell>
+            )}
           </>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
@@ -2425,7 +2451,7 @@ function CollectionStudio({
         </div>
       )}
 
-      {isCompactCollection && (
+      {isCompactCollection && isCreateModalOpen && (
         <ModalShell
           onClose={closeCreateModal}
           title={`Novo ${getCollectionEntityLabel(colName, title)}`}
@@ -2525,8 +2551,7 @@ function ModalShell({
 }) {
   return (
     <AnimatePresence>
-      {open && (
-        <motion.div
+      <motion.div
           className="fixed inset-0 z-[260] flex items-center justify-center bg-[#09090B]/55 p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -2555,7 +2580,6 @@ function ModalShell({
             <div className="mt-3 overflow-y-auto max-h-[calc(70vh-80px)]">{children}</div>
           </motion.div>
         </motion.div>
-      )}
     </AnimatePresence>
   );
 }
@@ -2759,6 +2783,27 @@ function Panel({
   );
 }
 
+function ImagePreviewWithError({ url, alt }: { url: string; alt: string }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="h-12 w-12 rounded bg-red-50 flex items-center justify-center">
+        <ImageOff className="h-5 w-5 text-red-400" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className="h-12 w-12 rounded object-cover"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 function ImageUpload({
   value,
   onChange,
@@ -2885,7 +2930,7 @@ function ImageUpload({
         <div className="space-y-2">
           {value.map((url, index) => (
             <div key={index} className="flex items-center gap-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-2">
-              <img src={url} alt={`Imagem ${index + 1}`} className="h-12 w-12 rounded object-cover" />
+              <ImagePreviewWithError url={url} alt={`Imagem ${index + 1}`} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[11px] text-[#6B7280]">{url}</div>
               </div>
@@ -2901,10 +2946,10 @@ function ImageUpload({
         </div>
       )}
 
-      {!multiple && value && (
+      {!multiple && value && typeof value === 'string' && (
         <div className="space-y-2">
           <div className="flex items-center gap-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-2">
-            <img src={value} alt="Imagem" className="h-12 w-12 rounded object-cover" />
+            <ImagePreviewWithError url={value} alt="Imagem" />
             <div className="min-w-0 flex-1">
               <div className="truncate text-[11px] text-[#6B7280]">{value}</div>
             </div>
@@ -2918,7 +2963,9 @@ function ImageUpload({
           </div>
           
           <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
-            <img src={value} alt="Preview" className="h-32 w-full object-cover" />
+            {value && typeof value === 'string' && (
+              <img src={value} alt="Preview" className="h-32 w-full object-cover" />
+            )}
           </div>
         </div>
       )}
