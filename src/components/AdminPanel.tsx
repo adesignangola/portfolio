@@ -1360,20 +1360,55 @@ function DashboardStatus({ status }: { status: string }) {
 
 function SlidesStudio({ showStatus }: { showStatus: (message: string) => void }) {
   const [slides, setSlides] = useState<SlideConfig[]>([]);
+  const [savedSlides, setSavedSlides] = useState<SlideConfig[]>([]);
+  const [savingSlideIds, setSavingSlideIds] = useState<string[]>([]);
 
   useEffect(() => {
     const loadSlides = async () => {
       const { data } = await supabase.from('slides').select('*').order('id');
       const normalizedSlides = normalizeTableRows<SlideConfig>('slides', data);
-      setSlides(normalizedSlides.length ? normalizedSlides : getDefaultSlides());
+      const initialSlides = normalizedSlides.length ? normalizedSlides : getDefaultSlides();
+      setSlides(initialSlides);
+      setSavedSlides(initialSlides);
     };
     void loadSlides();
   }, []);
 
-  const updateSlide = async (id: string, field: string, value: string) => {
+  const updateSlideField = (id: string, field: 'titulo' | 'eyebrow', value: string) => {
     setSlides((current) => current.map((slide) => (slide.id === id ? { ...slide, [field]: value } : slide)));
-    await saveSlide(id, { [field]: value });
-    showStatus('Slide atualizado');
+  };
+
+  const isSlideDirty = (id: string) => {
+    const draftSlide = slides.find((slide) => slide.id === id);
+    const savedSlide = savedSlides.find((slide) => slide.id === id);
+    if (!draftSlide || !savedSlide) return false;
+    return draftSlide.titulo !== savedSlide.titulo || draftSlide.eyebrow !== savedSlide.eyebrow;
+  };
+
+  const saveSlideCard = async (id: string) => {
+    const draftSlide = slides.find((slide) => slide.id === id);
+    if (!draftSlide) return;
+
+    setSavingSlideIds((current) => (current.includes(id) ? current : [...current, id]));
+
+    try {
+      await saveSlide(id, {
+        titulo: draftSlide.titulo,
+        eyebrow: draftSlide.eyebrow,
+      });
+      setSavedSlides((current) =>
+        current.map((slide) =>
+          slide.id === id ? { ...slide, titulo: draftSlide.titulo, eyebrow: draftSlide.eyebrow } : slide,
+        ),
+      );
+      showStatus('Alteracoes do slide guardadas');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Nao foi possivel guardar as alteracoes do slide.';
+      showStatus(message);
+      console.error('Erro ao guardar slide:', error);
+    } finally {
+      setSavingSlideIds((current) => current.filter((slideId) => slideId !== id));
+    }
   };
 
   return (
@@ -1387,11 +1422,25 @@ function SlidesStudio({ showStatus }: { showStatus: (message: string) => void })
           <div key={slide.id}>
             <Panel title={`${String(index + 1).padStart(2, '0')} / ${slide.id}`} description="Narrative controls">
               <div className="grid gap-4">
+                <div className="flex flex-col gap-3 rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className={`text-[12px] font-medium ${isSlideDirty(slide.id) ? 'text-[#B45309]' : 'text-[#6B7280]'}`}>
+                    {isSlideDirty(slide.id) ? 'Alteracoes por guardar' : 'Sem alteracoes pendentes'}
+                  </span>
+                  <PrimaryButton
+                    type="button"
+                    onClick={() => void saveSlideCard(slide.id)}
+                    loading={savingSlideIds.includes(slide.id)}
+                    disabled={!isSlideDirty(slide.id) || savingSlideIds.includes(slide.id)}
+                    className="w-full sm:w-auto"
+                  >
+                    Guardar alteracoes
+                  </PrimaryButton>
+                </div>
                 <Field label="Titulo">
-                  <TextInput value={slide.titulo} onChange={(event) => updateSlide(slide.id, 'titulo', event.target.value)} />
+                  <TextInput value={slide.titulo} onChange={(event) => updateSlideField(slide.id, 'titulo', event.target.value)} />
                 </Field>
                 <Field label="Eyebrow">
-                  <TextInput value={slide.eyebrow} onChange={(event) => updateSlide(slide.id, 'eyebrow', event.target.value)} />
+                  <TextInput value={slide.eyebrow} onChange={(event) => updateSlideField(slide.id, 'eyebrow', event.target.value)} />
                 </Field>
               </div>
             </Panel>

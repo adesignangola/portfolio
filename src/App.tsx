@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, ChevronLeft, ChevronRight, X, Mail, Phone, Instagram, Quote, CheckCircle2, FileDown, RefreshCw } from 'lucide-react';
 import { usePortfolio } from './hooks/usePortfolio';
@@ -11,6 +11,114 @@ import { supabase } from './lib/supabase';
 import { analytics } from './lib/analytics';
 import AdminPanel from './components/AdminPanel';
 import adPortrait from './assets/ad.png';
+
+function getProjectImages(project: any): string[] {
+  if (project?.imagens && Array.isArray(project.imagens)) {
+    return project.imagens.filter((image: unknown): image is string => typeof image === 'string' && image.trim().length > 0);
+  }
+
+  if (project?.imagemDestaque) {
+    const imageList = Array.isArray(project.imagemDestaque) ? project.imagemDestaque : [project.imagemDestaque];
+    return imageList.filter((image: unknown): image is string => typeof image === 'string' && image.trim().length > 0);
+  }
+
+  return [];
+}
+
+const loadedImageUrls = new Set<string>();
+const imagePreloadPromises = new Map<string, Promise<void>>();
+
+function isImagePreloaded(url: string) {
+  return loadedImageUrls.has(url);
+}
+
+function preloadImage(url: string, priority: 'high' | 'auto' = 'auto') {
+  if (typeof window === 'undefined' || !url) {
+    return Promise.resolve();
+  }
+
+  if (loadedImageUrls.has(url)) {
+    return Promise.resolve();
+  }
+
+  const existingRequest = imagePreloadPromises.get(url);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = new Promise<void>((resolve) => {
+    const image = new window.Image();
+    let settled = false;
+
+    const finish = (loaded: boolean) => {
+      if (settled) return;
+      settled = true;
+
+      if (loaded) {
+        loadedImageUrls.add(url);
+      }
+
+      imagePreloadPromises.delete(url);
+      resolve();
+    };
+
+    image.decoding = 'async';
+    try {
+      (image as HTMLImageElement & { fetchPriority?: 'high' | 'auto' }).fetchPriority = priority;
+    } catch {
+      image.setAttribute('fetchpriority', priority);
+    }
+
+    image.onload = () => {
+      if (typeof image.decode === 'function') {
+        image.decode().catch(() => undefined).finally(() => finish(true));
+        return;
+      }
+
+      finish(true);
+    };
+
+    image.onerror = () => finish(false);
+    image.src = url;
+
+    if (image.complete && image.naturalWidth > 0) {
+      finish(true);
+    }
+  });
+
+  imagePreloadPromises.set(url, request);
+  return request;
+}
+
+function preloadProjectGallery(project: any, startIndex = 0, maxImages = 3) {
+  const imageUrls = getProjectImages(project);
+  if (imageUrls.length === 0) return;
+
+  const normalizedStartIndex = ((startIndex % imageUrls.length) + imageUrls.length) % imageUrls.length;
+  const orderedUrls = [
+    ...imageUrls.slice(normalizedStartIndex),
+    ...imageUrls.slice(0, normalizedStartIndex),
+  ];
+
+  orderedUrls.slice(0, maxImages).forEach((imageUrl, index) => {
+    preloadImage(imageUrl, index === 0 ? 'high' : 'auto');
+  });
+}
+
+async function warmProjectGalleryInBackground(project: any, startIndex = 0, eagerImages = 3) {
+  const imageUrls = getProjectImages(project);
+  if (imageUrls.length <= eagerImages) return;
+
+  const normalizedStartIndex = ((startIndex % imageUrls.length) + imageUrls.length) % imageUrls.length;
+  const orderedUrls = [
+    ...imageUrls.slice(normalizedStartIndex),
+    ...imageUrls.slice(0, normalizedStartIndex),
+  ];
+
+  for (const imageUrl of orderedUrls.slice(eagerImages)) {
+    await preloadImage(imageUrl, 'auto');
+  }
+}
 
 export default function App() {
   const { perfil, servicos, metricas, projectos, contactos, sectores, paises, ferramentas, depoimentos, parceiros, config, slides, quemSou, lastUpdate, loading } = usePortfolio();
@@ -30,6 +138,12 @@ export default function App() {
     window.addEventListener('resize', checkOrientation);
     return () => window.removeEventListener('resize', checkOrientation);
   }, []);
+
+  useEffect(() => {
+    projectos.slice(0, 4).forEach((project, index) => {
+      preloadProjectGallery(project, 0, index < 2 ? 2 : 1);
+    });
+  }, [projectos]);
 
   const nextSlide = () => setCurrentSlide((prev) => Math.min(prev + 1, totalSlides - 1));
   const prevSlide = () => setCurrentSlide((prev) => Math.max(prev - 1, 0));
@@ -853,47 +967,114 @@ function Slide04Portfolio({ projectos, slideConfig }: { projectos: any[], slideC
   const titleText = slideConfig?.titulo || 'PROJETOS';
   const eyebrowText = slideConfig?.eyebrow || 'Trabalhos';
   const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [displayedImageIndex, setDisplayedImageIndex] = useState(0);
+  const [requestedImageIndex, setRequestedImageIndex] = useState(0);
+  const [isImageTransitioning, setIsImageTransitioning] = useState(false);
+  const imageTransitionTokenRef = useRef(0);
 
   const openProjectModal = (project: any) => {
+    const imageUrls = getProjectImages(project);
+
+    preloadProjectGallery(project, 0, 3);
+    void warmProjectGalleryInBackground(project, 0, 3);
+
+    imageTransitionTokenRef.current += 1;
     setSelectedProject(project);
-    setCurrentImageIndex(0);
+    setDisplayedImageIndex(0);
+    setRequestedImageIndex(0);
+    setIsImageTransitioning(Boolean(imageUrls[0]) && !isImagePreloaded(imageUrls[0]));
     analytics.trackProjectClick(project.id || project.titulo);
   };
 
   const closeModal = () => {
+    imageTransitionTokenRef.current += 1;
     setSelectedProject(null);
-    setCurrentImageIndex(0);
+    setDisplayedImageIndex(0);
+    setRequestedImageIndex(0);
+    setIsImageTransitioning(false);
+  };
+
+  const requestImage = (nextIndex: number) => {
+    const images = getProjectImages(selectedProject);
+    if (images.length === 0) return;
+
+    const normalizedIndex = ((nextIndex % images.length) + images.length) % images.length;
+    const nextImageUrl = images[normalizedIndex];
+
+    setRequestedImageIndex(normalizedIndex);
+    preloadProjectGallery(selectedProject, normalizedIndex, 3);
+
+    if (isImagePreloaded(nextImageUrl)) {
+      imageTransitionTokenRef.current += 1;
+      setDisplayedImageIndex(normalizedIndex);
+      setIsImageTransitioning(false);
+      return;
+    }
+
+    const transitionToken = ++imageTransitionTokenRef.current;
+    setIsImageTransitioning(true);
+
+    preloadImage(nextImageUrl, 'high').finally(() => {
+      if (imageTransitionTokenRef.current !== transitionToken) return;
+
+      setDisplayedImageIndex(normalizedIndex);
+      setIsImageTransitioning(false);
+    });
   };
 
   const nextImage = () => {
     const images = getProjectImages(selectedProject);
     if (images.length > 0) {
-      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+      requestImage(requestedImageIndex + 1);
     }
   };
 
   const prevImage = () => {
     const images = getProjectImages(selectedProject);
     if (images.length > 0) {
-      setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+      requestImage(requestedImageIndex - 1);
     }
   };
 
-  const getProjectImages = (project: any) => {
-    if (project?.imagens && Array.isArray(project.imagens)) {
-      return project.imagens;
-    }
-    if (project?.imagemDestaque) {
-      return Array.isArray(project.imagemDestaque) ? project.imagemDestaque : [project.imagemDestaque];
-    }
-    return [];
+  const getImageSrc = (url: string) => {
+    return url;
   };
 
-  const getImageSrc = (url: string, index: number) => {
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}_t=${index}-${Date.now()}`;
-  };
+  useEffect(() => {
+    if (!selectedProject) return;
+
+    const imageUrls = getProjectImages(selectedProject);
+    if (imageUrls.length === 0) return;
+
+    const currentUrl = imageUrls[requestedImageIndex];
+    if (currentUrl && !isImagePreloaded(currentUrl)) {
+      const transitionToken = ++imageTransitionTokenRef.current;
+      setIsImageTransitioning(true);
+
+      preloadImage(currentUrl, 'high').finally(() => {
+        if (imageTransitionTokenRef.current !== transitionToken) return;
+
+        setDisplayedImageIndex(requestedImageIndex);
+        setIsImageTransitioning(false);
+      });
+      return;
+    }
+
+    setDisplayedImageIndex(requestedImageIndex);
+    setIsImageTransitioning(false);
+  }, [selectedProject, requestedImageIndex]);
+
+  useEffect(() => {
+    if (!selectedProject) return;
+
+    const imageUrls = getProjectImages(selectedProject);
+    if (imageUrls.length <= 1) return;
+
+    preloadProjectGallery(selectedProject, requestedImageIndex + 1, 2);
+  }, [selectedProject, requestedImageIndex]);
+
+  const selectedProjectImages = selectedProject ? getProjectImages(selectedProject) : [];
+  const displayedImageUrl = selectedProjectImages[displayedImageIndex];
 
   return (
     <>
@@ -904,6 +1085,8 @@ function Slide04Portfolio({ projectos, slideConfig }: { projectos: any[], slideC
               key={p.id || p.titulo} 
               className={`group bg-white flex flex-col justify-between p-4 lg:p-10 transition-all hover:bg-brand-orange hover:text-white cursor-pointer relative overflow-hidden h-full ${idx > 1 ? 'hidden lg:flex' : 'flex'}`}
               onClick={() => openProjectModal(p)}
+              onMouseEnter={() => preloadProjectGallery(p, 0, 2)}
+              onFocus={() => preloadProjectGallery(p, 0, 2)}
             >
               <div className="absolute top-0 right-0 p-3 lg:p-6 text-[8px] lg:text-[10px] font-bold tracking-[0.2em] lg:tracking-[0.3em] opacity-20 uppercase">
                 {String(p.id || '').padStart(2, '0')}
@@ -926,7 +1109,11 @@ function Slide04Portfolio({ projectos, slideConfig }: { projectos: any[], slideC
                   return (
                     <img
                       src={imageUrl}
+                      alt={p.titulo || 'Projeto'}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      decoding="async"
+                      loading="eager"
+                      fetchPriority={idx < 2 ? 'high' : 'auto'}
                       referrerPolicy="no-referrer"
                     />
                   );
@@ -978,18 +1165,28 @@ function Slide04Portfolio({ projectos, slideConfig }: { projectos: any[], slideC
               <div className="flex flex-col lg:flex-row flex-1 min-h-0">
                 {/* Carrossel de Imagens - Completo sem scroll */}
                 <div className="lg:w-3/5 bg-black relative flex items-center justify-center h-[40vh] sm:h-[50vh] lg:h-auto">
-                  {getProjectImages(selectedProject).length > 0 ? (
+                  {selectedProjectImages.length > 0 ? (
                     <>
                       <div className="relative w-full h-full flex items-center justify-center">
-                        <img
-                          src={getImageSrc(getProjectImages(selectedProject)[currentImageIndex], currentImageIndex)}
-                          alt={`${selectedProject.titulo} - Imagem ${currentImageIndex + 1}`}
-                          className="max-w-full max-h-full object-contain"
-                          referrerPolicy="no-referrer"
-                        />
+                        {displayedImageUrl ? (
+                          <img
+                            src={getImageSrc(displayedImageUrl)}
+                            alt={`${selectedProject.titulo} - Imagem ${displayedImageIndex + 1}`}
+                            className="max-w-full max-h-full object-contain"
+                            decoding="async"
+                            fetchPriority="high"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : null}
+
+                        {isImageTransitioning && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+                            <div className="h-10 w-10 rounded-full border-2 border-white/25 border-t-brand-orange animate-spin" />
+                          </div>
+                        )}
                         
                         {/* Controles do Carrossel */}
-                        {getProjectImages(selectedProject).length > 1 && (
+                        {selectedProjectImages.length > 1 && (
                           <>
                             <button
                               aria-label="Imagem anterior"
@@ -1008,12 +1205,12 @@ function Slide04Portfolio({ projectos, slideConfig }: { projectos: any[], slideC
                             
                             {/* Indicadores */}
                             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
-                              {getProjectImages(selectedProject).map((_, index) => (
+                              {selectedProjectImages.map((_, index) => (
                                 <button
                                   key={index}
-                                  onClick={() => setCurrentImageIndex(index)}
+                                  onClick={() => requestImage(index)}
                                   className={`h-1.5 sm:h-2 rounded-full transition-all ${
-                                    index === currentImageIndex ? 'bg-brand-orange w-6 sm:w-8' : 'bg-white/50 w-1.5 sm:w-2'
+                                    index === requestedImageIndex ? 'bg-brand-orange w-6 sm:w-8' : 'bg-white/50 w-1.5 sm:w-2'
                                   }`}
                                 />
                               ))}
@@ -1274,18 +1471,20 @@ function Slide09Partners({ parceiros, slideConfig }: { parceiros: any[], slideCo
            {displayParceiros.map(p => (
              <motion.div 
                key={p.id}
-               whileHover={{ y: -5 }}
-               className="bg-zinc-50 border border-zinc-100 p-8 lg:p-12 flex items-center justify-center grayscale hover:grayscale-0 transition-all group"
+               whileHover={{ scale: 1.04 }}
+               transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+               className="bg-zinc-50 border border-zinc-100 p-8 lg:p-12 flex items-center justify-center transition-transform group"
              >
                 {p.logo ? (
                   <img 
                     src={p.logo} 
                     alt={p.nome} 
-                    className="max-h-12 lg:max-h-20 w-auto opacity-40 group-hover:opacity-100 transition-opacity" 
+                    className="max-h-12 lg:max-h-20 w-auto transition-transform"
+                    style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(0%) saturate(0%) hue-rotate(179deg) brightness(96%) contrast(86%)' }}
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <span className="font-bold text-zinc-300 uppercase tracking-widest text-[10px]">{p.nome}</span>
+                  <span className="font-bold text-[#282828] uppercase tracking-widest text-[10px]">{p.nome}</span>
                 )}
              </motion.div>
            ))}
